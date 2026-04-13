@@ -1,0 +1,160 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - dev
+      - main
+  pull_request:
+    branches:
+      - dev
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # Job 1: Foundry — build + test smart contracts
+
+  contracts-test:
+    name: Contracts (Foundry)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/contracts
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive # Foundry libs (forge-std etc.) live as git submodules
+
+      # Foundry cache
+      # Cache both the Foundry toolchain binary and the forge build artifacts.
+      # Key busts when any Solidity source or config file changes.
+      - name: Cache Foundry toolchain
+        uses: actions/cache@v4
+        id: cache-foundry
+        with:
+          path: ~/.foundry
+          key: foundry-${{ runner.os }}-${{ hashFiles('packages/contracts/foundry.toml') }}
+          restore-keys: |
+            foundry-${{ runner.os }}-
+
+      - name: Cache Forge build artifacts
+        uses: actions/cache@v4
+        with:
+          path: packages/contracts/out
+          key: forge-out-${{ runner.os }}-${{ hashFiles('packages/contracts/src/**/*.sol', 'packages/contracts/foundry.toml') }}
+          restore-keys: |
+            forge-out-${{ runner.os }}-
+
+      #  Install Foundry (skipped if toolchain cache hit)
+      - name: Install Foundry
+        if: steps.cache-foundry.outputs.cache-hit != 'true'
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly # pin to a specific nightly tag for reproducibility once stable
+
+      # Ensure forge is on PATH even on cache-hit (toolchain action sets PATH)
+      - name: Add Foundry to PATH (cache-hit path)
+        if: steps.cache-foundry.outputs.cache-hit == 'true'
+        run: echo "$HOME/.foundry/bin" >> $GITHUB_PATH
+
+      - name: Verify Foundry version
+        run: forge --version
+
+      #  Build & test
+      - name: Install Forge dependencies (git submodules / remappings)
+        run: forge install --no-commit
+
+      - name: Build contracts
+        run: forge build --sizes # --sizes prints contract bytecode sizes, useful for size limit checks
+
+      - name: Run Forge tests
+        run: forge test --gas-report -vvv
+        env:
+          # Foundry forks need an RPC — point at Mezo testnet public RPC.
+          # Keep the var name consistent with .env.example.
+          MEZO_TESTNET_RPC_URL: ${{ secrets.MEZO_TESTNET_RPC_URL }}
+
+  # Job 2: Next.js — install deps + production build
+
+  web-build:
+    name: Web (Next.js 15)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      #  Node & pnpm setup
+      - name: Set up Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Install the exact pnpm version declared in packageManager field of
+      # root package.json so CI always mirrors local developer environments.
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false # we handle install ourselves below for cache control
+
+      #  pnpm store cache
+      # Cache the global pnpm content-addressable store.
+      # Key busts when the root lockfile changes; otherwise layer is reused.
+      - name: Get pnpm store path
+        id: pnpm-cache
+        shell: bash
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+      - name: Cache pnpm store
+        uses: actions/cache@v4
+        with:
+          path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+          key: pnpm-store-${{ runner.os }}-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-
+
+      #  Next.js build cache
+      # Cache .next/cache between runs so incremental compilation is fast.
+      - name: Cache Next.js build
+        uses: actions/cache@v4
+        with:
+          path: apps/web/.next/cache
+          key: nextjs-${{ runner.os }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'apps/web/next.config.*', '**/pnpm-lock.yaml') }}
+          restore-keys: |
+            nextjs-${{ runner.os }}-
+
+      #  Install & build
+      # --frozen-lockfile: fail fast if lockfile is out of sync with package.json.
+      # This is the canonical pnpm install command for CI environments.
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # Build only the `web` workspace. Turborepo will automatically build any
+      # internal packages (packages/ui, packages/shared, etc.) that `web` depends on.
+      - name: Build web app
+        run: pnpm build --filter=web
+        env:
+          # Provide stub values for env vars that Next.js reads at build time
+          # (NEXT_PUBLIC_* are inlined at compile time — real values go in Vercel).
+          NEXT_PUBLIC_APP_URL: https://bitremit.app
+          NEXT_PUBLIC_CHAIN_ID: "31611"
+          NEXT_PUBLIC_VAULT_ADDRESS: "0x0000000000000000000000000000000000000000"
+          NEXT_PUBLIC_ROUTER_ADDRESS: "0x0000000000000000000000000000000000000000"
+          NEXT_PUBLIC_REGISTRY_ADDRESS: "0x0000000000000000000000000000000000000000"
+          # DATABASE_URL is not needed at build time for Next.js static analysis,
+          # but some ORMs (Prisma) generate types that require a reachable schema.
+          # Provide a dummy DSN so `prisma generate` (run in postinstall) is happy.
+          DATABASE_URL: "postgresql://ci:ci@localhost:5432/bitremit_ci"
+
+      #  Upload build output (optional, useful for debugging deploy issues)
+      - name: Upload Next.js build artifact
+        if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build-${{ github.sha }}
+          path: apps/web/.next
+          retention-days: 3
