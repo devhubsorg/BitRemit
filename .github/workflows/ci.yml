@@ -98,6 +98,8 @@ jobs:
       # root package.json so CI always mirrors local developer environments.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           run_install: false # we handle install ourselves below for cache control
 
