@@ -1,0 +1,118 @@
+// packages/database/prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/client"
+  binaryTargets = ["native", "linux-musl-openssl-3.0.x"] // native = local dev, linux-musl = Railway/Docker
+}
+
+// =============================================================================
+// ENUMS
+// =============================================================================
+
+enum PaymentRail {
+  MPESA
+  GCASH
+  MTNMOMO
+}
+
+enum TxStatus {
+  PENDING
+  CONFIRMED_ONCHAIN
+  OFFRAMP_PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// =============================================================================
+// MODELS
+// =============================================================================
+
+model User {
+  id          String  @id @default(cuid())
+  address     String  @unique // EVM wallet address (checksummed)
+  phoneNumber String? @unique // E.164 format e.g. +254712345678
+  siweSession String? // JWT issued after SIWE sign-in
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vaultPosition VaultPosition?
+  sentTxs       Transaction[]  @relation("SentTransactions")
+
+  @@map("users")
+}
+
+model Recipient {
+  id               String      @id @default(cuid())
+  name             String
+  phoneNumber      String      @unique // E.164 format
+  phoneHash        String      @unique // keccak256(phoneNumber) — mirrors on-chain RecipientRegistry
+  custodialAddress String      @unique // EVM address controlled by the protocol
+  paymentRail      PaymentRail
+  isUpgraded       Boolean     @default(false) // true once recipient self-custodies their wallet
+
+  createdAt DateTime @default(now())
+
+  receivedTxs Transaction[] @relation("ReceivedTransactions")
+
+  @@map("recipients")
+}
+
+model VaultPosition {
+  id               String  @id @default(cuid())
+  userId           String  @unique // 1-to-1 with User
+  collateralAmount Decimal @db.Decimal(36, 18) // BTC deposited (18 decimal precision)
+  borrowedMUSD     Decimal @db.Decimal(36, 18) // mUSD borrowed against collateral
+  collateralRatio  Decimal @db.Decimal(10, 4) // e.g. 1.5000 = 150%
+  lastSyncedBlock  Int // last block the indexer confirmed this position on-chain
+
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("vault_positions")
+}
+
+model Transaction {
+  id            String      @id @default(cuid())
+  txHash        String?     @unique // on-chain tx hash — null until confirmed
+  senderId      String
+  recipientId   String
+  musdAmount    Decimal     @db.Decimal(36, 18) // mUSD amount sent
+  feeAmount     Decimal     @db.Decimal(36, 18) // protocol fee in mUSD
+  railType      PaymentRail
+  railReference String? // off-ramp provider's transaction ID
+  fiatAmount    Decimal     @db.Decimal(18, 2) // fiat amount delivered (2 decimal for currency)
+  fiatCurrency  String      @db.VarChar(3) // ISO 4217 e.g. "KES", "PHP", "GHS"
+  status        TxStatus    @default(PENDING)
+  blockNumber   Int? // block in which RemittanceSent event was emitted
+
+  createdAt   DateTime  @default(now())
+  completedAt DateTime? // set when status → COMPLETED or FAILED
+
+  sender    User      @relation("SentTransactions", fields: [senderId], references: [id])
+  recipient Recipient @relation("ReceivedTransactions", fields: [recipientId], references: [id])
+
+  @@index([senderId])
+  @@index([recipientId])
+  @@index([status])
+  @@index([txHash])
+  @@map("transactions")
+}
+
+// Singleton row that tracks the last block the indexer successfully processed.
+// Using a fixed id ("singleton") means there is always exactly one row —
+// upsert on id avoids race conditions between indexer restarts.
+model IndexerState {
+  id        String   @id @default("singleton")
+  lastBlock Int
+  updatedAt DateTime @updatedAt
+
+  @@map("indexer_state")
+}

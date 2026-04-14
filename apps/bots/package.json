@@ -1,0 +1,9 @@
+{
+  "name": "@bitremit/bots",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "echo \"bots not scaffolded yet\"",
+    "build": "echo \"bots not scaffolded yet\""
+  }
+}
