@@ -1,0 +1,8 @@
+{
+  "bitRemitVaultImpl": "0x1c17AA0184129ab35CAa9a52d609e808e4F823f2",
+  "bitRemitVaultProxy": "0x872043fb1fC350967ed4A4C13b6420b40e440591",
+  "recipientRegistryImpl": "0x9CA176BE6D28556Ec579E0a22B7c895d130E4340",
+  "recipientRegistryProxy": "0x4877a1fC542ed05e570913a7fFD9Ba4A161fcB69",
+  "remittanceRouterImpl": "0x5B9fe9E53Ac5aa86E710fffeb45f654511eF7177",
+  "remittanceRouterProxy": "0xE532E6029c2a473b797C93f6a6A3036329C57Fe8"
+}
