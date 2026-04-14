@@ -1,12 +1,10 @@
-// packages/database/prisma/schema.prisma
-
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 generator client {
   provider      = "prisma-client-js"
-  output        = "../generated/client"
   binaryTargets = ["native", "linux-musl-openssl-3.0.x"] // native = local dev, linux-musl = Railway/Docker
 }
 

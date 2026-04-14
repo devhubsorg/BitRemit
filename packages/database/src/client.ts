@@ -1,23 +1,22 @@
-// packages/database/src/client.ts
-// Singleton Prisma client — safe for Next.js hot-reload and serverless functions.
+import { PrismaClient } from "@prisma/client";
 
-import { PrismaClient } from "../generated/client";
+declare global {
+  // eslint-disable-next-line no-var
+  var __prisma: PrismaClient | undefined;
+}
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
-};
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
+function createPrismaClient(): PrismaClient {
+  return new PrismaClient({
     log:
       process.env.NODE_ENV === "development"
         ? ["query", "warn", "error"]
         : ["warn", "error"],
   });
-
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
 }
 
-export * from "../generated/client";
+const prisma: PrismaClient =
+  process.env.NODE_ENV === "production"
+    ? createPrismaClient()
+    : (globalThis.__prisma ??= createPrismaClient());
+
+export default prisma;
