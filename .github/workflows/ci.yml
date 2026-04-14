@@ -66,7 +66,7 @@ jobs:
 
       #  Build & test
       - name: Install Forge dependencies (git submodules / remappings)
-        run: forge install --no-commit
+        run: forge install
 
       - name: Build contracts
         run: forge build --sizes # --sizes prints contract bytecode sizes, useful for size limit checks
