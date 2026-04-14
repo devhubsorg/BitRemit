@@ -8,57 +8,50 @@ import {ReentrancyGuardUpgradeable} from "@openzeppelin/contracts-upgradeable/ut
 import {OwnableUpgradeable} from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {IRecipientRegistry} from "./interfaces/IRecipientRegistry.sol";
+
 import {IRemittanceRouter} from "./interfaces/IRemittanceRouter.sol";
+import {IBitRemitVault} from "./interfaces/IBitRemitVault.sol";
+import {IRecipientRegistry} from "./interfaces/IRecipientRegistry.sol";
 
 contract RemittanceRouter is 
     Initializable, 
-    UUPSUpgradeable, 
-    PausableUpgradeable, 
+    UUPSUpgradeable,
     ReentrancyGuardUpgradeable, 
+    PausableUpgradeable, 
     OwnableUpgradeable, 
     IRemittanceRouter 
 {
     using SafeERC20 for IERC20;
 
+    IBitRemitVault public vault;
+    IRecipientRegistry public registry;
     IERC20 public musdToken;
-    IRecipientRegistry public recipientRegistry;
-    address public treasury;
+
+    mapping(address => uint256) public sameBlockProtection;
 
     /// @custom:oz-upgrades-unsafe-allow constructor
-    constructor() {
-        _disableInitializers();
-    }
+    constructor() { _disableInitializers(); }
 
     function initialize(
         address initialOwner,
-        address _musdToken,
-        address _recipientRegistry,
-        address _treasury
+        address _vault,
+        address _registry,
+        address _musdToken
     ) public initializer {
         __Ownable_init(initialOwner);
         __UUPSUpgradeable_init();
         __Pausable_init();
         __ReentrancyGuard_init();
 
+        vault = IBitRemitVault(_vault);
+        registry = IRecipientRegistry(_registry);
         musdToken = IERC20(_musdToken);
-        recipientRegistry = IRecipientRegistry(_recipientRegistry);
-        treasury = _treasury;
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    function unpause() external onlyOwner {
-        _unpause();
-    }
-
-    function setTreasury(address _treasury) external onlyOwner {
-        treasury = _treasury;
-    }
+    function pause() external onlyOwner { _pause(); }
+    function unpause() external onlyOwner { _unpause(); }
 
     function sendRemittance(
         bytes32 recipientPhoneHash,
@@ -66,17 +59,19 @@ contract RemittanceRouter is
         string calldata railType
     ) external nonReentrant whenNotPaused {
         require(amount > 0, "Amount must be > 0");
-        
-        address recipientAddr = recipientRegistry.getAddress(recipientPhoneHash);
-        require(recipientAddr != address(0), "Recipient not registered");
+        require(sameBlockProtection[msg.sender] != block.number, "Flash loan guard triggered");
+        require(registry.isRegistered(recipientPhoneHash), "Recipient not registered");
 
-        // Transfers MUSD from the sender's wallet to the protocol treasury to lock the offramp fiat value
-        musdToken.safeTransferFrom(msg.sender, treasury, amount);
+        address recipientAddress = registry.getAddress(recipientPhoneHash);
+
+        musdToken.safeTransferFrom(msg.sender, recipientAddress, amount);
+
+        sameBlockProtection[msg.sender] = block.number;
 
         emit RemittanceSent(
             msg.sender,
             recipientPhoneHash,
-            recipientAddr,
+            recipientAddress,
             amount,
             railType,
             block.timestamp
