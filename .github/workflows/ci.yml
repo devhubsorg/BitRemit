@@ -139,7 +139,7 @@ jobs:
         working-directory: apps/web
         run: pnpm exec prisma generate
         env:
-        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
 
       # Build only the `web` workspace. Turborepo will automatically build any
       # internal packages (packages/ui, packages/shared, etc.) that `web` depends on.
