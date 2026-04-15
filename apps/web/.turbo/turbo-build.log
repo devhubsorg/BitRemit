@@ -5,19 +5,21 @@
 ▲ Next.js 16.2.3 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 58s
+✓ Compiled successfully in 92s
   Running TypeScript ...
-  Finished TypeScript in 40s ...
+  Finished TypeScript in 4.6min ...
   Collecting page data using 3 workers ...
 [Upstash Redis] The 'url' property is missing or undefined in your Redis config.
 [Upstash Redis] The 'token' property is missing or undefined in your Redis config.
 [Upstash Redis] The 'url' property is missing or undefined in your Redis config.
 [Upstash Redis] The 'token' property is missing or undefined in your Redis config.
-  Generating static pages using 3 workers (0/7) ...
-  Generating static pages using 3 workers (1/7) 
-  Generating static pages using 3 workers (3/7) 
-  Generating static pages using 3 workers (5/7) 
-✓ Generating static pages using 3 workers (7/7) in 661ms
+  Generating static pages using 3 workers (0/6) ...
+[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
+  Generating static pages using 3 workers (1/6) 
+[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
+  Generating static pages using 3 workers (2/6) 
+  Generating static pages using 3 workers (4/6) 
+✓ Generating static pages using 3 workers (6/6) in 2.5s
   Finalizing page optimization ...
 
 Route (app)
