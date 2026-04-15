@@ -6,7 +6,14 @@
   "types": "src/index.ts",
   "dependencies": {
     "@mezo-org/passport": "^0.17.2",
+    "jose": "^6.2.2",
     "viem": "^2",
     "wagmi": "^2.19.5"
+  },
+  "devDependencies": {
+    "next": "^16.2.3"
+  },
+  "peerDependencies": {
+    "next": ">=15.0.0"
   }
 }
