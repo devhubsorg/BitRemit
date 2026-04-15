@@ -135,22 +135,26 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      - name: Generate Prisma client
+        working-directory: apps/web
+        run: pnpm exec prisma generate
+        env:
+        DATABASE_URL: ${{ secrets.DATABASE_URL }}
+
       # Build only the `web` workspace. Turborepo will automatically build any
       # internal packages (packages/ui, packages/shared, etc.) that `web` depends on.
       - name: Build web app
         run: pnpm build --filter=web
         env:
-          # Provide stub values for env vars that Next.js reads at build time
-          # (NEXT_PUBLIC_* are inlined at compile time — real values go in Vercel).
           NEXT_PUBLIC_APP_URL: https://bitremit.app
           NEXT_PUBLIC_CHAIN_ID: "31611"
           NEXT_PUBLIC_VAULT_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_ROUTER_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_REGISTRY_ADDRESS: "0x0000000000000000000000000000000000000000"
-          # DATABASE_URL is not needed at build time for Next.js static analysis,
-          # but some ORMs (Prisma) generate types that require a reachable schema.
-          # Provide a dummy DSN so `prisma generate` (run in postinstall) is happy.
-          DATABASE_URL: "postgresql://ci:ci@localhost:5432/bitremit_ci"
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          # ✅ FIXED: stub fallbacks so build doesn't fail when secrets are unset
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL || 'https://inviting-stag-98699.upstash.io' }}
+          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN || 'gQAAAAAAAYGLAAIncDJjYzM3ZGQ3YzU1ZDY0ZWY5YmQ2NDM1YmMzMTFmNGQ5MXAyOTg2OTk' }}
 
       #  Upload build output (optional, useful for debugging deploy issues)
       - name: Upload Next.js build artifact
