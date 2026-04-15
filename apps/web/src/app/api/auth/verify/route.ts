@@ -92,3 +92,5 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   return NextResponse.json({ token, address: user.address });
 }
+
+export const dynamic = "force-dynamic";
