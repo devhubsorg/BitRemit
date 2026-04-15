@@ -1,10 +1,11 @@
 // layout.tsx is intentionally a SERVER component.
-// It imports Web3Providers (a client component) which creates the
-// "use client" boundary — this is the correct Next.js 15 App Router pattern.
+// Web3Providers is loaded via a thin "use client" wrapper with next/dynamic
+// (ssr: false) so the wallet SDK — which bundles a pre-React 19 CJS
+// jsx-runtime — never runs during server-side rendering / static generation.
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Web3Providers } from "./providers";
+import Web3Providers from "./Web3ProvidersDynamic";
 
 // RainbowKit styles must be imported once, at the root. Importing inside a
 // server component is fine — Next.js bundles it as global CSS.

@@ -2,3 +2,7 @@ packages:
   - "apps/*"
   - "packages/*"
   - "mocks/*"
+
+ignoredBuiltDependencies:
+  - sharp
+  - unrs-resolver
