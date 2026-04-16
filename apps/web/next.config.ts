@@ -1,4 +1,26 @@
+import fs from "node:fs";
+import path from "node:path";
 import type { NextConfig } from "next";
+
+// ---------------------------------------------------------------------------
+// Load the monorepo-root .env.local so every package shares one env file.
+// Next.js auto-loads apps/web/.env.local; this extends that to the root file.
+// Vars already set in the environment (system or apps/web/.env.local) win.
+// ---------------------------------------------------------------------------
+const rootEnvPath = path.resolve(process.cwd(), "../../.env.local");
+if (fs.existsSync(rootEnvPath)) {
+  const lines = fs.readFileSync(rootEnvPath, "utf8").split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#")) continue;
+    const eqIdx = trimmed.indexOf("=");
+    if (eqIdx < 0) continue;
+    const key = trimmed.slice(0, eqIdx).trim();
+    let val = trimmed.slice(eqIdx + 1).trim();
+    if (/^["']/.test(val)) val = val.slice(1, -1);
+    if (!(key in process.env)) process.env[key] = val;
+  }
+}
 
 const nextConfig: NextConfig = {
   transpilePackages: [
