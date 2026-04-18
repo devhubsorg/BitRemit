@@ -14,7 +14,7 @@ function createPrismaClient(): PrismaClient {
   });
 }
 
-const prisma: PrismaClient =
+export const prisma: PrismaClient =
   process.env.NODE_ENV === "production"
     ? createPrismaClient()
     : (globalThis.__prisma ??= createPrismaClient());
