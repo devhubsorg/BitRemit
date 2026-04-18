@@ -1,25 +1,39 @@
 
-> web@0.1.0 build C:\Users\SPEED\OneDrive\Documents\BitRemit\BitRemit\apps\web
+> web@0.1.0 build C:\Users\Favour\Desktop\BitRemit\apps\web
 > next build
 
 ▲ Next.js 16.2.3 (Turbopack)
 
   Creating an optimized production build ...
-✓ Compiled successfully in 92s
+Turbopack build encountered 1 warnings:
+./apps/web/next.config.ts
+Encountered unexpected file in NFT list
+A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
+- filesystem operations (like path.join, path.resolve or fs.readFile), or
+- very dynamic requires (like require('./' + foo)).
+To resolve this, you can
+- remove them if possible, or
+- only use them in development, or
+- make sure they are statically scoped to some subfolder: path.join(process.cwd(), 'data', bar), or
+- add ignore comments: path.join(/*turbopackIgnore: true*/ process.cwd(), bar)
+
+Import trace:
+  App Route:
+    ./apps/web/next.config.ts
+    ./packages/database/generated/client/index.js
+    ./packages/database/src/client.ts
+    ./apps/web/src/app/api/vault/route.ts
+
+
+✓ Compiled successfully in 49s
   Running TypeScript ...
-  Finished TypeScript in 4.6min ...
+  Finished TypeScript in 27.3s ...
   Collecting page data using 3 workers ...
-[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
-[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
-[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
-[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
-  Generating static pages using 3 workers (0/6) ...
-[Upstash Redis] The 'url' property is missing or undefined in your Redis config.
-  Generating static pages using 3 workers (1/6) 
-[Upstash Redis] The 'token' property is missing or undefined in your Redis config.
-  Generating static pages using 3 workers (2/6) 
-  Generating static pages using 3 workers (4/6) 
-✓ Generating static pages using 3 workers (6/6) in 2.5s
+  Generating static pages using 3 workers (0/10) ...
+  Generating static pages using 3 workers (2/10) 
+  Generating static pages using 3 workers (4/10) 
+  Generating static pages using 3 workers (7/10) 
+✓ Generating static pages using 3 workers (10/10) in 1369ms
   Finalizing page optimization ...
 
 Route (app)
@@ -27,7 +41,12 @@ Route (app)
 ├ ○ /_not-found
 ├ ƒ /api/auth/nonce
 ├ ƒ /api/auth/session
-└ ƒ /api/auth/verify
+├ ƒ /api/auth/verify
+├ ƒ /api/recipients
+├ ƒ /api/remittance
+├ ƒ /api/remittance/[id]
+├ ƒ /api/transactions
+└ ƒ /api/vault
 
 
 ○  (Static)   prerendered as static content

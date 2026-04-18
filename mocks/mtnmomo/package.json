@@ -1,0 +1,21 @@
+{
+  "name": "mtnmomo-mock",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx server.ts"
+  },
+  "dependencies": {
+    "express": "latest",
+    "cors": "latest",
+    "dotenv": "latest"
+  },
+  "devDependencies": {
+    "tsx": "latest",
+    "typescript": "latest",
+    "@types/node": "latest",
+    "@types/express": "latest",
+    "@types/cors": "latest"
+  }
+}
