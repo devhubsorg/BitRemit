@@ -1,0 +1,10 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install"
+
+[deploy]
+startCommand = "pnpm --filter @bitremit/blockchain start"
+restartPolicyType = "on_failure"
+
+# This is a worker service — it has no HTTP port to expose.
+# It runs the blockchain indexer and BullMQ off-ramp worker as a continuous process.

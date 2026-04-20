@@ -9,6 +9,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@bitremit/blockchain": "workspace:*",
     "@bitremit/database": "workspace:*",
     "@mezo-org/passport": "^0.17.2",
     "@rainbow-me/rainbowkit": "^2.2.10",
