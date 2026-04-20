@@ -1,0 +1,273 @@
+name: Railway Deploy
+
+# ────────────────────────────────────────────────────────────────────────────
+# Triggers
+# ────────────────────────────────────────────────────────────────────────────
+on:
+  push:
+    branches: [main]
+
+  workflow_dispatch:
+    inputs:
+      service:
+        description: "Service to deploy"
+        required: false
+        default: all
+        type: choice
+        options:
+          - all
+          - mpesa-mock
+          - gcash-mock
+          - mtnmomo-mock
+          - bots
+
+# Never run two deploys for the same ref at the same time.
+# Do NOT cancel in-progress deployments — a deploy mid-flight should finish.
+concurrency:
+  group: railway-deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+# ────────────────────────────────────────────────────────────────────────────
+# Job: changes
+# Detects which service directories were modified so push deploys are scoped.
+# workflow_dispatch always bypasses this check and deploys the selected target.
+# ────────────────────────────────────────────────────────────────────────────
+jobs:
+  changes:
+    name: Detect changed services
+    runs-on: ubuntu-latest
+    outputs:
+      mpesa: ${{ steps.filter.outputs.mpesa }}
+      gcash: ${{ steps.filter.outputs.gcash }}
+      mtnmomo: ${{ steps.filter.outputs.mtnmomo }}
+      bots: ${{ steps.filter.outputs.bots }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Path filter
+        uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            mpesa:
+              - 'mocks/mpesa/**'
+              - 'mocks/package.json'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            gcash:
+              - 'mocks/gcash/**'
+              - 'mocks/package.json'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            mtnmomo:
+              - 'mocks/mtnmomo/**'
+              - 'mocks/package.json'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+            bots:
+              - 'apps/bots/**'
+              - 'packages/**'
+              - 'pnpm-lock.yaml'
+              - 'package.json'
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Shared steps template (used via `steps` in each deploy job)
+  # ────────────────────────────────────────────────────────────────────────────
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job: deploy-mpesa-mock
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-mpesa-mock:
+    name: "Deploy · M-Pesa Mock"
+    needs: changes
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.mpesa == 'true') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.service == 'all' || github.event.inputs.service == 'mpesa-mock'))
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy to Railway
+        working-directory: mocks/mpesa
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach
+
+      - name: Smoke-test · Health endpoint
+        continue-on-error: true
+        run: |
+          if [ -z "$MPESA_MOCK_URL" ]; then
+            echo "MPESA_MOCK_URL secret not set — skipping health check"
+            exit 0
+          fi
+          echo "Waiting 90 s for Railway to build and start the image..."
+          sleep 90
+          for i in 1 2 3 4 5 6; do
+            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
+              "$MPESA_MOCK_URL/health" 2>/dev/null || echo "000")
+            echo "Attempt $i/6 — HTTP $HTTP"
+            [ "$HTTP" = "200" ] && { echo "✓ M-Pesa Mock is healthy"; exit 0; }
+            sleep 15
+          done
+          echo "✗ Health check did not pass within the allotted time (deploy may still be in progress)"
+        env:
+          MPESA_MOCK_URL: ${{ secrets.MPESA_MOCK_URL }}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job: deploy-gcash-mock
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-gcash-mock:
+    name: "Deploy · GCash Mock"
+    needs: changes
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.gcash == 'true') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.service == 'all' || github.event.inputs.service == 'gcash-mock'))
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy to Railway
+        working-directory: mocks/gcash
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach
+
+      - name: Smoke-test · Health endpoint
+        continue-on-error: true
+        run: |
+          if [ -z "$GCASH_MOCK_URL" ]; then
+            echo "GCASH_MOCK_URL secret not set — skipping health check"
+            exit 0
+          fi
+          echo "Waiting 90 s for Railway to build and start the image..."
+          sleep 90
+          for i in 1 2 3 4 5 6; do
+            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
+              "$GCASH_MOCK_URL/health" 2>/dev/null || echo "000")
+            echo "Attempt $i/6 — HTTP $HTTP"
+            [ "$HTTP" = "200" ] && { echo "✓ GCash Mock is healthy"; exit 0; }
+            sleep 15
+          done
+          echo "✗ Health check did not pass within the allotted time (deploy may still be in progress)"
+        env:
+          GCASH_MOCK_URL: ${{ secrets.GCASH_MOCK_URL }}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job: deploy-mtnmomo-mock
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-mtnmomo-mock:
+    name: "Deploy · MTN MoMo Mock"
+    needs: changes
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.mtnmomo == 'true') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.service == 'all' || github.event.inputs.service == 'mtnmomo-mock'))
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy to Railway
+        working-directory: mocks/mtnmomo
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach
+
+      - name: Smoke-test · Health endpoint
+        continue-on-error: true
+        run: |
+          if [ -z "$MTNMOMO_MOCK_URL" ]; then
+            echo "MTNMOMO_MOCK_URL secret not set — skipping health check"
+            exit 0
+          fi
+          echo "Waiting 90 s for Railway to build and start the image..."
+          sleep 90
+          for i in 1 2 3 4 5 6; do
+            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
+              "$MTNMOMO_MOCK_URL/health" 2>/dev/null || echo "000")
+            echo "Attempt $i/6 — HTTP $HTTP"
+            [ "$HTTP" = "200" ] && { echo "✓ MTN MoMo Mock is healthy"; exit 0; }
+            sleep 15
+          done
+          echo "✗ Health check did not pass within the allotted time (deploy may still be in progress)"
+        env:
+          MTNMOMO_MOCK_URL: ${{ secrets.MTNMOMO_MOCK_URL }}
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job: deploy-bots
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-bots:
+    name: "Deploy · Bots"
+    needs: changes
+    if: >-
+      (github.event_name == 'push' && needs.changes.outputs.bots == 'true') ||
+      (github.event_name == 'workflow_dispatch' &&
+        (github.event.inputs.service == 'all' || github.event.inputs.service == 'bots'))
+    runs-on: ubuntu-latest
+    environment: production
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Railway CLI
+        run: |
+          curl -fsSL https://railway.app/install.sh | sh
+          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
+
+      - name: Deploy to Railway
+        working-directory: apps/bots
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+        run: railway up --detach
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Job: deploy-summary
+  # Reports which services were actually deployed in this run.
+  # ────────────────────────────────────────────────────────────────────────────
+  deploy-summary:
+    name: Deploy summary
+    runs-on: ubuntu-latest
+    needs:
+      - deploy-mpesa-mock
+      - deploy-gcash-mock
+      - deploy-mtnmomo-mock
+      - deploy-bots
+    if: always()
+    steps:
+      - name: Print outcomes
+        run: |
+          echo "┌──────────────────┬──────────────┐"
+          echo "│ Service          │ Result       │"
+          echo "├──────────────────┼──────────────┤"
+          printf "│ %-16s │ %-12s │\n" "mpesa-mock"   "${{ needs.deploy-mpesa-mock.result }}"
+          printf "│ %-16s │ %-12s │\n" "gcash-mock"   "${{ needs.deploy-gcash-mock.result }}"
+          printf "│ %-16s │ %-12s │\n" "mtnmomo-mock" "${{ needs.deploy-mtnmomo-mock.result }}"
+          printf "│ %-16s │ %-12s │\n" "bots"         "${{ needs.deploy-bots.result }}"
+          echo "└──────────────────┴──────────────┘"
