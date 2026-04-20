@@ -1,0 +1,7 @@
+[build]
+builder = "nixpacks"
+buildCommand = "pnpm install && pnpm --filter @bitremit/gcash-mock build"
+
+[deploy]
+startCommand = "node dist/server.js"
+restartPolicyType = "on_failure"
