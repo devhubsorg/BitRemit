@@ -29,8 +29,6 @@ concurrency:
 
 # ────────────────────────────────────────────────────────────────────────────
 # Job: changes
-# Detects which service directories were modified so push deploys are scoped.
-# workflow_dispatch always bypasses this check and deploys the selected target.
 # ────────────────────────────────────────────────────────────────────────────
 jobs:
   changes:
@@ -72,10 +70,6 @@ jobs:
               - 'package.json'
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Shared steps template (used via `steps` in each deploy job)
-  # ────────────────────────────────────────────────────────────────────────────
-
-  # ────────────────────────────────────────────────────────────────────────────
   # Job: deploy-mpesa-mock
   # ────────────────────────────────────────────────────────────────────────────
   deploy-mpesa-mock:
@@ -101,7 +95,7 @@ jobs:
         working-directory: mocks/mpesa
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
+        run: railway up --detach --service mpesa-mock
 
       - name: Smoke-test · Health endpoint
         continue-on-error: true
@@ -149,7 +143,7 @@ jobs:
         working-directory: mocks/gcash
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
+        run: railway up --detach --service gcash-mock
 
       - name: Smoke-test · Health endpoint
         continue-on-error: true
@@ -197,7 +191,7 @@ jobs:
         working-directory: mocks/mtnmomo
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
+        run: railway up --detach --service mtnmomo-mock
 
       - name: Smoke-test · Health endpoint
         continue-on-error: true
@@ -245,16 +239,16 @@ jobs:
         working-directory: apps/bots
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach
+        run: railway up --detach --service bots
 
   # ────────────────────────────────────────────────────────────────────────────
   # Job: deploy-summary
-  # Reports which services were actually deployed in this run.
   # ────────────────────────────────────────────────────────────────────────────
   deploy-summary:
     name: Deploy summary
     runs-on: ubuntu-latest
     needs:
+      - changes
       - deploy-mpesa-mock
       - deploy-gcash-mock
       - deploy-mtnmomo-mock
