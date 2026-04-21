@@ -14,8 +14,6 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job 1: Foundry — build + test smart contracts
-
   contracts-test:
     name: Contracts (Foundry)
     runs-on: ubuntu-latest
@@ -70,13 +68,11 @@ jobs:
         env:
           MEZO_TESTNET_RPC_URL: ${{ secrets.MEZO_TESTNET_RPC_URL }}
 
-  # Job 2: Next.js — install deps + production build
-
   web-build:
     name: Web (Next.js 15)
     runs-on: ubuntu-latest
 
-    # ✅ GLOBAL ENV (FIXES YOUR ERROR)
+    # ✅ GLOBAL ENV (used everywhere including Turbo)
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
@@ -118,18 +114,20 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-
 
-      # ✅ NOW Prisma has access during install
+      # ✅ Install (Prisma safe now)
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # (Optional but safe to keep)
+      # ✅ Generate Prisma ONCE (controlled)
       - name: Generate Prisma client
-        working-directory: packages/database
-        run: pnpm exec prisma generate
+        run: pnpm --filter @bitremit/database exec prisma generate
 
+      # ✅ Build with env explicitly passed (fixes Turbo isolation)
       - name: Build web app
         run: pnpm build --filter=web
         env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
           NEXT_PUBLIC_APP_URL: https://bitremit.app
           NEXT_PUBLIC_CHAIN_ID: "31611"
           NEXT_PUBLIC_VAULT_ADDRESS: "0x0000000000000000000000000000000000000000"
