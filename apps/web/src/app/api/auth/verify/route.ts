@@ -13,8 +13,8 @@ import { getJwtSecret } from "@/lib/jwt";
  * Request body: { message: string; signature: string }
  *
  * Required env vars:
- *   UPSTASH_REDIS_REST_URL   — Upstash Redis REST endpoint
- *   UPSTASH_REDIS_REST_TOKEN — Upstash Redis REST token
+ *   UPSTASH_REDIS_URL   — Upstash Redis REST endpoint
+ *   UPSTASH_REDIS_TOKEN — Upstash Redis REST token
  *   JWT_SECRET               — Secret used to sign session JWTs (≥ 32 chars)
  */
 export async function POST(request: Request): Promise<NextResponse> {
