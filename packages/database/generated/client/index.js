@@ -193,7 +193,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "C:\\Users\\Favour\\Desktop\\BitRemit\\packages\\database\\generated\\client",
+      "value": "C:\\Users\\SPEED\\OneDrive\\Documents\\BitRemit\\BitRemit\\packages\\database\\generated\\client",
       "fromEnvVar": null
     },
     "config": {
@@ -211,7 +211,7 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "C:\\Users\\Favour\\Desktop\\BitRemit\\packages\\database\\prisma\\schema.prisma",
+    "sourceFilePath": "C:\\Users\\SPEED\\OneDrive\\Documents\\BitRemit\\BitRemit\\packages\\database\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
