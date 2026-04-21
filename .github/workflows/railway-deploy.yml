@@ -17,12 +17,10 @@ on:
         options:
           - all
           - mpesa-mock
-          - gcash-mock
-          - mtnmomo-mock
+          - blockchain-worker
           - bots
 
 # Never run two deploys for the same ref at the same time.
-# Do NOT cancel in-progress deployments — a deploy mid-flight should finish.
 concurrency:
   group: railway-deploy-${{ github.ref }}
   cancel-in-progress: false
@@ -36,8 +34,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       mpesa: ${{ steps.filter.outputs.mpesa }}
-      gcash: ${{ steps.filter.outputs.gcash }}
-      mtnmomo: ${{ steps.filter.outputs.mtnmomo }}
+      blockchain: ${{ steps.filter.outputs.blockchain }}
       bots: ${{ steps.filter.outputs.bots }}
     steps:
       - name: Checkout
@@ -53,14 +50,9 @@ jobs:
               - 'mocks/package.json'
               - 'pnpm-lock.yaml'
               - 'package.json'
-            gcash:
-              - 'mocks/gcash/**'
-              - 'mocks/package.json'
-              - 'pnpm-lock.yaml'
-              - 'package.json'
-            mtnmomo:
-              - 'mocks/mtnmomo/**'
-              - 'mocks/package.json'
+            blockchain:
+              - 'packages/blockchain/**'
+              - 'packages/database/**'
               - 'pnpm-lock.yaml'
               - 'package.json'
             bots:
@@ -118,15 +110,15 @@ jobs:
           MPESA_MOCK_URL: ${{ secrets.MPESA_MOCK_URL }}
 
   # ────────────────────────────────────────────────────────────────────────────
-  # Job: deploy-gcash-mock
+  # Job: deploy-blockchain-worker
   # ────────────────────────────────────────────────────────────────────────────
-  deploy-gcash-mock:
-    name: "Deploy · GCash Mock"
+  deploy-blockchain-worker:
+    name: "Deploy · Blockchain Worker"
     needs: changes
     if: >-
-      (github.event_name == 'push' && needs.changes.outputs.gcash == 'true') ||
+      (github.event_name == 'push' && needs.changes.outputs.blockchain == 'true') ||
       (github.event_name == 'workflow_dispatch' &&
-        (github.event.inputs.service == 'all' || github.event.inputs.service == 'gcash-mock'))
+        (github.event.inputs.service == 'all' || github.event.inputs.service == 'blockchain-worker'))
     runs-on: ubuntu-latest
     environment: production
 
@@ -140,78 +132,10 @@ jobs:
           echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
 
       - name: Deploy to Railway
-        working-directory: mocks/gcash
+        working-directory: packages/blockchain
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach --service gcash-mock
-
-      - name: Smoke-test · Health endpoint
-        continue-on-error: true
-        run: |
-          if [ -z "$GCASH_MOCK_URL" ]; then
-            echo "GCASH_MOCK_URL secret not set — skipping health check"
-            exit 0
-          fi
-          echo "Waiting 90 s for Railway to build and start the image..."
-          sleep 90
-          for i in 1 2 3 4 5 6; do
-            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-              "$GCASH_MOCK_URL/health" 2>/dev/null || echo "000")
-            echo "Attempt $i/6 — HTTP $HTTP"
-            [ "$HTTP" = "200" ] && { echo "✓ GCash Mock is healthy"; exit 0; }
-            sleep 15
-          done
-          echo "✗ Health check did not pass within the allotted time (deploy may still be in progress)"
-        env:
-          GCASH_MOCK_URL: ${{ secrets.GCASH_MOCK_URL }}
-
-  # ────────────────────────────────────────────────────────────────────────────
-  # Job: deploy-mtnmomo-mock
-  # ────────────────────────────────────────────────────────────────────────────
-  deploy-mtnmomo-mock:
-    name: "Deploy · MTN MoMo Mock"
-    needs: changes
-    if: >-
-      (github.event_name == 'push' && needs.changes.outputs.mtnmomo == 'true') ||
-      (github.event_name == 'workflow_dispatch' &&
-        (github.event.inputs.service == 'all' || github.event.inputs.service == 'mtnmomo-mock'))
-    runs-on: ubuntu-latest
-    environment: production
-
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Install Railway CLI
-        run: |
-          curl -fsSL https://railway.app/install.sh | sh
-          echo "$HOME/.railway/bin" >> "$GITHUB_PATH"
-
-      - name: Deploy to Railway
-        working-directory: mocks/mtnmomo
-        env:
-          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: railway up --detach --service mtnmomo-mock
-
-      - name: Smoke-test · Health endpoint
-        continue-on-error: true
-        run: |
-          if [ -z "$MTNMOMO_MOCK_URL" ]; then
-            echo "MTNMOMO_MOCK_URL secret not set — skipping health check"
-            exit 0
-          fi
-          echo "Waiting 90 s for Railway to build and start the image..."
-          sleep 90
-          for i in 1 2 3 4 5 6; do
-            HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-              "$MTNMOMO_MOCK_URL/health" 2>/dev/null || echo "000")
-            echo "Attempt $i/6 — HTTP $HTTP"
-            [ "$HTTP" = "200" ] && { echo "✓ MTN MoMo Mock is healthy"; exit 0; }
-            sleep 15
-          done
-          echo "✗ Health check did not pass within the allotted time (deploy may still be in progress)"
-        env:
-          MTNMOMO_MOCK_URL: ${{ secrets.MTNMOMO_MOCK_URL }}
+        run: railway up --detach --service blockchain-worker
 
   # ────────────────────────────────────────────────────────────────────────────
   # Job: deploy-bots
@@ -250,18 +174,16 @@ jobs:
     needs:
       - changes
       - deploy-mpesa-mock
-      - deploy-gcash-mock
-      - deploy-mtnmomo-mock
+      - deploy-blockchain-worker
       - deploy-bots
     if: always()
     steps:
       - name: Print outcomes
         run: |
-          echo "┌──────────────────┬──────────────┐"
-          echo "│ Service          │ Result       │"
-          echo "├──────────────────┼──────────────┤"
-          printf "│ %-16s │ %-12s │\n" "mpesa-mock"   "${{ needs.deploy-mpesa-mock.result }}"
-          printf "│ %-16s │ %-12s │\n" "gcash-mock"   "${{ needs.deploy-gcash-mock.result }}"
-          printf "│ %-16s │ %-12s │\n" "mtnmomo-mock" "${{ needs.deploy-mtnmomo-mock.result }}"
-          printf "│ %-16s │ %-12s │\n" "bots"         "${{ needs.deploy-bots.result }}"
-          echo "└──────────────────┴──────────────┘"
+          echo "┌─────────────────────┬──────────────┐"
+          echo "│ Service             │ Result       │"
+          echo "├─────────────────────┼──────────────┤"
+          printf "│ %-19s │ %-12s │\n" "mpesa-mock"          "${{ needs.deploy-mpesa-mock.result }}"
+          printf "│ %-19s │ %-12s │\n" "blockchain-worker"   "${{ needs.deploy-blockchain-worker.result }}"
+          printf "│ %-19s │ %-12s │\n" "bots"                "${{ needs.deploy-bots.result }}"
+          echo "└─────────────────────┴──────────────┘"
