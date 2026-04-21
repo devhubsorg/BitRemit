@@ -122,10 +122,13 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       # =========================
-      # FIX: Prisma runs safely here
+      # FIX: SAFE PRISMA GENERATION (NO TURBO DEPENDENCY CRASH)
       # =========================
       - name: Generate Prisma client
         run: pnpm --filter database prisma generate
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
 
       - name: Build web app
         run: pnpm build --filter=web
@@ -137,7 +140,7 @@ jobs:
           NEXT_PUBLIC_REGISTRY_ADDRESS: "0x0000000000000000000000000000000000000000"
 
           UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL || 'https://inviting-stag-98699.upstash.io' }}
-          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN || 'gQAAAAAAAYGLAAIncDJjYzM3ZGQ3YzU1ZDY0ZWY5YmMzMTFmNGQ5MXAyOTg2OTk' }}
+          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN || 'gQAAAAAAAYGLAAIncDJjYzM3ZGQ3ZDY0ZWY5YmMzMTFmNGQ5MXAyOTg2OTk' }}
 
       - name: Upload Next.js build artifact
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
