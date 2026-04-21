@@ -80,8 +80,8 @@ jobs:
     runs-on: ubuntu-latest
 
     env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL }}
-      DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+      DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
 
     steps:
       - name: Checkout repository
