@@ -72,7 +72,6 @@ jobs:
     name: Web (Next.js 15)
     runs-on: ubuntu-latest
 
-    # ✅ GLOBAL ENV (used everywhere including Turbo)
     env:
       DATABASE_URL: ${{ secrets.DATABASE_URL }}
       DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
@@ -95,7 +94,6 @@ jobs:
 
       - name: Get pnpm store path
         id: pnpm-cache
-        shell: bash
         run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
 
       - name: Cache pnpm store
@@ -110,24 +108,27 @@ jobs:
         uses: actions/cache@v4
         with:
           path: apps/web/.next/cache
-          key: nextjs-${{ runner.os }}-${{ hashFiles('apps/web/**/*.ts', 'apps/web/**/*.tsx', 'apps/web/next.config.*', '**/pnpm-lock.yaml') }}
+          key: nextjs-${{ runner.os }}-${{ hashFiles('apps/web/**/*', '**/pnpm-lock.yaml') }}
           restore-keys: |
             nextjs-${{ runner.os }}-
 
-      # ✅ Install (Prisma safe now)
+      # ✅ Install deps
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # ✅ Generate Prisma ONCE (controlled)
-      - name: Generate Prisma client
-        run: pnpm --filter @bitremit/database exec prisma generate
+      # ✅ Generate Prisma correctly (IMPORTANT FIX)
+      - name: Generate Prisma client (database package)
+        working-directory: packages/database
+        run: pnpm exec prisma generate
 
-      # ✅ Build with env explicitly passed (fixes Turbo isolation)
+      # ✅ Ensure TS sees generated client BEFORE turbo
+      - name: Build database package first
+        run: pnpm --filter @bitremit/database build
+
+      # ✅ Now build web
       - name: Build web app
         run: pnpm build --filter=web
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
           NEXT_PUBLIC_APP_URL: https://bitremit.app
           NEXT_PUBLIC_CHAIN_ID: "31611"
           NEXT_PUBLIC_VAULT_ADDRESS: "0x0000000000000000000000000000000000000000"
