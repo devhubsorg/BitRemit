@@ -14,11 +14,13 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Job 1: Foundry — build + test smart contracts
-
+  # =========================
+  # JOB 1: SMART CONTRACTS
+  # =========================
   contracts-test:
     name: Contracts (Foundry)
     runs-on: ubuntu-latest
+
     defaults:
       run:
         working-directory: packages/contracts
@@ -27,11 +29,8 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: recursive # Foundry libs (forge-std etc.) live as git submodules
+          submodules: recursive
 
-      # Foundry cache
-      # Cache both the Foundry toolchain binary and the forge build artifacts.
-      # Key busts when any Solidity source or config file changes.
       - name: Cache Foundry toolchain
         uses: actions/cache@v4
         id: cache-foundry
@@ -49,14 +48,12 @@ jobs:
           restore-keys: |
             forge-out-${{ runner.os }}-
 
-      #  Install Foundry (skipped if toolchain cache hit)
       - name: Install Foundry
         if: steps.cache-foundry.outputs.cache-hit != 'true'
         uses: foundry-rs/foundry-toolchain@v1
         with:
-          version: nightly # pin to a specific nightly tag for reproducibility once stable
+          version: nightly
 
-      # Ensure forge is on PATH even on cache-hit (toolchain action sets PATH)
       - name: Add Foundry to PATH (cache-hit path)
         if: steps.cache-foundry.outputs.cache-hit == 'true'
         run: echo "$HOME/.foundry/bin" >> $GITHUB_PATH
@@ -64,48 +61,42 @@ jobs:
       - name: Verify Foundry version
         run: forge --version
 
-      #  Build & test
-      - name: Install Forge dependencies (git submodules / remappings)
+      - name: Install Forge dependencies
         run: forge install
 
       - name: Build contracts
-        run: forge build --sizes # --sizes prints contract bytecode sizes, useful for size limit checks
+        run: forge build --sizes
 
       - name: Run Forge tests
         run: forge test --gas-report -vvv
         env:
-          # Foundry forks need an RPC — point at Mezo testnet public RPC.
-          # Keep the var name consistent with .env.example.
           MEZO_TESTNET_RPC_URL: ${{ secrets.MEZO_TESTNET_RPC_URL }}
 
-  # Job 2: Next.js — install deps + production build
-
+  # =========================
+  # JOB 2: WEB APP
+  # =========================
   web-build:
     name: Web (Next.js 15)
     runs-on: ubuntu-latest
+
+    env:
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      #  Node & pnpm setup
       - name: Set up Node.js 20
         uses: actions/setup-node@v4
         with:
           node-version: "20"
 
-      # Install the exact pnpm version declared in packageManager field of
-      # root package.json so CI always mirrors local developer environments.
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          run_install: false # we handle install ourselves below for cache control
+          run_install: false
 
-      #  pnpm store cache
-      # Cache the global pnpm content-addressable store.
-      # Key busts when the root lockfile changes; otherwise layer is reused.
       - name: Get pnpm store path
         id: pnpm-cache
         shell: bash
@@ -119,8 +110,6 @@ jobs:
           restore-keys: |
             pnpm-store-${{ runner.os }}-
 
-      #  Next.js build cache
-      # Cache .next/cache between runs so incremental compilation is fast.
       - name: Cache Next.js build
         uses: actions/cache@v4
         with:
@@ -129,21 +118,15 @@ jobs:
           restore-keys: |
             nextjs-${{ runner.os }}-
 
-      #  Install & build
-      # --frozen-lockfile: fail fast if lockfile is out of sync with package.json.
-      # This is the canonical pnpm install command for CI environments.
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
+      # =========================
+      # FIX: Prisma runs safely here
+      # =========================
       - name: Generate Prisma client
-        working-directory: packages/database
-        run: pnpm exec prisma generate
-        env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
+        run: pnpm --filter database prisma generate
 
-      # Build only the `web` workspace. Turborepo will automatically build any
-      # internal packages (packages/ui, packages/shared, etc.) that `web` depends on.
       - name: Build web app
         run: pnpm build --filter=web
         env:
@@ -152,13 +135,10 @@ jobs:
           NEXT_PUBLIC_VAULT_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_ROUTER_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_REGISTRY_ADDRESS: "0x0000000000000000000000000000000000000000"
-          DATABASE_URL: ${{ secrets.DATABASE_URL }}
-          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
-          # ✅ FIXED: stub fallbacks so build doesn't fail when secrets are unset
-          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL || 'https://inviting-stag-98699.upstash.io' }}
-          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN || 'gQAAAAAAAYGLAAIncDJjYzM3ZGQ3YzU1ZDY0ZWY5YmQ2NDM1YmMzMTFmNGQ5MXAyOTg2OTk' }}
 
-      #  Upload build output (optional, useful for debugging deploy issues)
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL || 'https://inviting-stag-98699.upstash.io' }}
+          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN || 'gQAAAAAAAYGLAAIncDJjYzM3ZGQ3YzU1ZDY0ZWY5YmMzMTFmNGQ5MXAyOTg2OTk' }}
+
       - name: Upload Next.js build artifact
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
         uses: actions/upload-artifact@v4
