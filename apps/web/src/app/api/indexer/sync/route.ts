@@ -2,41 +2,27 @@ import { type NextRequest, NextResponse } from "next/server";
 import { syncOnce } from "@bitremit/blockchain";
 
 // ---------------------------------------------------------------------------
-// GET  /api/indexer/sync  — called by Vercel Cron (every minute)
-// POST /api/indexer/sync  — manual trigger (e.g. admin scripts)
+// POST /api/indexer/sync
 //
-// Security:
-//   GET:  Vercel automatically injects  Authorization: Bearer <CRON_SECRET>
-//         on every cron invocation. Requests without it are rejected with 401.
-//   POST: Caller must provide  X-Internal-Secret: <WORKER_API_SECRET>
+// Internal — requires the X-Internal-Secret header matching WORKER_API_SECRET.
+// Triggers a single indexer polling cycle synchronously and returns metrics.
+// Called by the Railway blockchain-worker service on demand.
 //
-// Response:  { blocksProcessed: number; eventsFound: number }
+// Request headers:
+//   X-Internal-Secret: <value of WORKER_API_SECRET>
+//
+// Response:
+//   { blocksProcessed: number; eventsFound: number }
 // ---------------------------------------------------------------------------
 
-function verifyCron(req: NextRequest): boolean {
-  const auth = req.headers.get("authorization");
-  const secret = process.env.CRON_SECRET;
-  return !!secret && auth === `Bearer ${secret}`;
-}
-
-function verifyInternal(req: NextRequest): boolean {
-  const header = req.headers.get("x-internal-secret");
-  const secret = process.env.WORKER_API_SECRET;
-  return !!secret && header === secret;
-}
-
-export async function GET(req: NextRequest) {
-  if (!verifyCron(req)) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
-  const result = await syncOnce();
-  return NextResponse.json(result);
-}
-
 export async function POST(req: NextRequest) {
-  if (!verifyInternal(req)) {
+  const secret = req.headers.get("x-internal-secret");
+  const expected = process.env.WORKER_API_SECRET;
+
+  if (!expected || !secret || secret !== expected) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
   const result = await syncOnce();
   return NextResponse.json(result);
 }

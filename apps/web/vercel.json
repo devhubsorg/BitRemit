@@ -3,11 +3,5 @@
   "framework": "nextjs",
   "installCommand": "corepack enable && pnpm install",
   "buildCommand": "cd ../.. && pnpm --filter=@bitremit/database exec prisma generate && pnpm --filter=web build",
-  "outputDirectory": ".next",
-  "crons": [
-    {
-      "path": "/api/indexer/sync",
-      "schedule": "* * * * *"
-    }
-  ]
+  "outputDirectory": ".next"
 }
