@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url';
 import { createPublicClient, http, parseEventLogs, defineChain, formatUnits } from 'viem';
 import { prisma } from '@bitremit/database';
 import { Queue } from 'bullmq';
@@ -241,5 +242,22 @@ export function stopIndexer() {
         console.log('[Indexer] Stopped loop.');
     }
 }
-// Auto-start if run directly
-startIndexer();
+/**
+ * Run a single indexer polling cycle and return basic metrics.
+ * Safe to call from API routes — does not start the background interval.
+ */
+export async function syncOnce() {
+    const before = await prisma.indexerState.findUnique({ where: { id: 'singleton' } });
+    const txBefore = await prisma.transaction.count();
+    await syncEvents();
+    const after = await prisma.indexerState.findUnique({ where: { id: 'singleton' } });
+    const txAfter = await prisma.transaction.count();
+    return {
+        blocksProcessed: Math.max(0, (after?.lastBlock ?? 0) - (before?.lastBlock ?? 0)),
+        eventsFound: Math.max(0, txAfter - txBefore),
+    };
+}
+// Auto-start only when executed as the entry-point script, not when imported as a module.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
+    startIndexer();
+}
