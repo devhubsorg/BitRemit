@@ -9,8 +9,8 @@ import { redis } from "@/lib/redis";
  * Stored in Redis with a 5-minute TTL to prevent reuse.
  *
  * Required env vars:
- *   UPSTASH_REDIS_REST_URL  — Upstash Redis REST endpoint
- *   UPSTASH_REDIS_REST_TOKEN — Upstash Redis REST token
+ *   UPSTASH_REDIS_URL  — Upstash Redis REST endpoint
+ *   UPSTASH_REDIS_TOKEN — Upstash Redis REST token
  */
 export async function GET(): Promise<NextResponse> {
   const nonce = randomBytes(16).toString("hex");
