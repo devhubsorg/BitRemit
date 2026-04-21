@@ -6,7 +6,6 @@
   "main": "./src/client.ts",
   "types": "./src/client.ts",
   "scripts": {
-    "postinstall": "prisma generate",
     "build": "prisma generate && tsc",
     "db:generate": "prisma generate",
     "db:migrate:dev": "prisma migrate dev",
