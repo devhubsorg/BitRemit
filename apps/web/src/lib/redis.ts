@@ -4,16 +4,16 @@ import { Redis } from "@upstash/redis";
  * Singleton Upstash Redis client (lazy-initialised).
  *
  * Required env vars:
- *   UPSTASH_REDIS_REST_URL   — Upstash Redis REST endpoint
- *   UPSTASH_REDIS_REST_TOKEN — Upstash Redis REST token
+ *   UPSTASH_REDIS_URL   — Upstash Redis REST endpoint
+ *   UPSTASH_REDIS_TOKEN — Upstash Redis REST token
  */
 let _redis: Redis | undefined;
 
 export function getRedis(): Redis {
   if (!_redis) {
     _redis = new Redis({
-      url: process.env.UPSTASH_REDIS_REST_URL!,
-      token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+      url: process.env.UPSTASH_REDIS_URL!,
+      token: process.env.UPSTASH_REDIS_TOKEN!,
     });
   }
   return _redis;
