@@ -79,10 +79,6 @@ jobs:
     name: Web (Next.js 15)
     runs-on: ubuntu-latest
 
-    env:
-      DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
-      DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
-
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -124,21 +120,21 @@ jobs:
       - name: Generate Prisma client
         run: pnpm --filter database prisma generate
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
-          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
 
       - name: Build web app
         run: pnpm build --filter=web
         env:
-          DATABASE_URL: ${{ secrets.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
-          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT || 'postgresql://placeholder:placeholder@localhost:5432/placeholder' }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          DATABASE_URL_DIRECT: ${{ secrets.DATABASE_URL_DIRECT }}
           NEXT_PUBLIC_APP_URL: https://bitremit.app
           NEXT_PUBLIC_CHAIN_ID: "31611"
           NEXT_PUBLIC_VAULT_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_ROUTER_ADDRESS: "0x0000000000000000000000000000000000000000"
           NEXT_PUBLIC_REGISTRY_ADDRESS: "0x0000000000000000000000000000000000000000"
-          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL || 'https://inviting-stag-98699.upstash.io' }}
-          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN || 'gQAAAAAAAYGLAAIncDJjYzM3ZGQ3ZDY0ZWY5YmMzMTFmNGQ5MXAyOTg2OTk' }}
+          UPSTASH_REDIS_URL: ${{ secrets.UPSTASH_REDIS_URL }}
+          UPSTASH_REDIS_TOKEN: ${{ secrets.UPSTASH_REDIS_TOKEN }}
 
       - name: Upload Next.js build artifact
         if: github.ref == 'refs/heads/dev' || github.ref == 'refs/heads/main'
