@@ -1,6 +1,5 @@
 [build]
-builder = "nixpacks"
-buildCommand = "pnpm install"
+buildCommand = "pnpm --filter @bitremit/database run db:generate && pnpm --filter @bitremit/blockchain run build"
 
 [deploy]
 startCommand = "pnpm --filter @bitremit/blockchain start"

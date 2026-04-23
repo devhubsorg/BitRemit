@@ -6,7 +6,13 @@
     "esModuleInterop": true,
     "skipLibCheck": true,
     "strict": true,
+    "noEmit": true,
+    "resolveJsonModule": true,
     "baseUrl": ".",
+    "paths": {
+      "@bitremit/database": ["../../packages/database/src/client.ts"]
+    },
     "types": ["node"]
-  }
+  },
+  "include": ["whatsapp/**/*"]
 }

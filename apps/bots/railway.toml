@@ -1,0 +1,8 @@
+[build]
+buildCommand = "pnpm --filter @bitremit/database run db:generate && pnpm --filter @bitremit/bots run build"
+
+[deploy]
+startCommand = "pnpm --filter @bitremit/bots start"
+restartPolicyType = "on_failure"
+healthcheckPath = "/webhook/twilio"
+healthcheckTimeout = 30
