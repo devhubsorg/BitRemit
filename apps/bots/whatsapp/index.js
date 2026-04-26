@@ -7,6 +7,10 @@ import dotenv from 'dotenv';
 dotenv.config({ path: '../../.env.local' });
 const app = express();
 app.use(express.urlencoded({ extended: false }));
+app.use((req, res, next) => {
+    console.log(`[WhatsApp] Incoming ${req.method} request to ${req.url}`);
+    next();
+});
 // Setup Redis
 const getRedisConnection = () => {
     const url = process.env.UPSTASH_REDIS_URL;
@@ -30,8 +34,16 @@ function generateUserToken(address, userId) {
 // Ensure the caller is genuinely Twilio
 function validateTwilioRequest(req, res, next) {
     const twilioSignature = req.headers['x-twilio-signature'];
-    const url = process.env.TWILIO_WEBHOOK_URL || `https://${req.get('host')}${req.originalUrl}`;
-    const params = req.body;
+    // In Express, req.originalUrl includes the query string which is correct for Twilio validation
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const host = forwardedHost ? forwardedHost : req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    let url = process.env.TWILIO_WEBHOOK_URL || `${protocol}://${host}${req.originalUrl}`;
+    // Fallback logic for localhost testing via browser GET without ngrok mappings
+    if (!twilioSignature && req.method === 'GET') {
+        return res.status(200).send('BitRemit WhatsApp Bot is Online (GET test successful). Please ensure Twilio is configured to use POST or pass valid signatures.');
+    }
+    const params = req.method === 'POST' ? req.body : req.query;
     // Skip auth token check if we are in local dev and explicitly ignoring it
     if (!process.env.TWILIO_AUTH_TOKEN) {
         console.warn('[WhatsApp] Missing TWILIO_AUTH_TOKEN, skipping signature validation.');
@@ -39,10 +51,11 @@ function validateTwilioRequest(req, res, next) {
     }
     const isValid = twilio.validateRequest(process.env.TWILIO_AUTH_TOKEN, twilioSignature, url, params);
     if (isValid) {
+        console.log(`[WhatsApp] Twilio signature validation passed for: ${url}`);
         next();
     }
     else {
-        console.error('[WhatsApp] Invalid Twilio Signature.');
+        console.error(`[WhatsApp] Invalid Twilio Signature computed for URL: ${url}`);
         res.status(403).send('Forbidden');
     }
 }
@@ -55,13 +68,14 @@ async function rateLimitCheck(phoneNumber) {
     }
     return count <= 5;
 }
-app.post('/webhook/twilio', validateTwilioRequest, async (req, res) => {
+app.all('/webhook/twilio', validateTwilioRequest, async (req, res) => {
     const twiml = new twilio.twiml.MessagingResponse();
     try {
-        const fromHeader = req.body.From || '';
+        const payload = req.method === 'POST' ? req.body : req.query;
+        const fromHeader = payload.From || '';
         // "whatsapp:+1234567890" -> "+1234567890"
         const phoneNumber = fromHeader.replace('whatsapp:', '');
-        const bodyText = (req.body.Body || '').trim();
+        const bodyText = (payload.Body || '').trim();
         const commandText = bodyText.toUpperCase();
         if (!phoneNumber) {
             return res.status(400).send('No sender information');

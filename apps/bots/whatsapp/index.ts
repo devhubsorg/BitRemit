@@ -10,6 +10,10 @@ dotenv.config({ path: '../../.env.local' });
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
+app.use((req, res, next) => {
+    console.log(`[WhatsApp] Incoming ${req.method} request to ${req.url}`);
+    next();
+});
 
 // Setup Redis
 const getRedisConnection = () => {
@@ -39,7 +43,10 @@ function validateTwilioRequest(req: Request, res: Response, next: express.NextFu
     const twilioSignature = req.headers['x-twilio-signature'] as string;
     
     // In Express, req.originalUrl includes the query string which is correct for Twilio validation
-    let url = process.env.TWILIO_WEBHOOK_URL || `https://${req.get('host')}${req.originalUrl}`;
+    const forwardedHost = req.headers['x-forwarded-host'];
+    const host = forwardedHost ? forwardedHost : req.get('host');
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    let url = process.env.TWILIO_WEBHOOK_URL || `${protocol}://${host}${req.originalUrl}`;
     
     // Fallback logic for localhost testing via browser GET without ngrok mappings
     if (!twilioSignature && req.method === 'GET') {
@@ -62,9 +69,10 @@ function validateTwilioRequest(req: Request, res: Response, next: express.NextFu
     );
     
     if (isValid) {
+        console.log(`[WhatsApp] Twilio signature validation passed for: ${url}`);
         next();
     } else {
-        console.error('[WhatsApp] Invalid Twilio Signature.');
+        console.error(`[WhatsApp] Invalid Twilio Signature computed for URL: ${url}`);
         res.status(403).send('Forbidden');
     }
 }
