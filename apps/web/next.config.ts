@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import { createRequire } from "node:module";
 import path from "node:path";
 import type { NextConfig } from "next";
 
@@ -22,6 +23,16 @@ if (fs.existsSync(rootEnvPath)) {
   }
 }
 
+// Force a single React runtime across app code and transpiled third-party SDKs.
+// Use require.resolve so paths remain valid with pnpm's node_modules layout.
+const require = createRequire(import.meta.url);
+const reactEntry = require.resolve("react");
+const reactDomEntry = require.resolve("react-dom");
+const reactJsxRuntime = require.resolve("react/jsx-runtime");
+const reactJsxDevRuntime = require.resolve("react/jsx-dev-runtime");
+const reactRoot = path.dirname(reactEntry);
+const reactDomRoot = path.dirname(reactDomEntry);
+
 const nextConfig: NextConfig = {
   transpilePackages: [
     "@mezo-org/orangekit",
@@ -39,17 +50,47 @@ const nextConfig: NextConfig = {
       // the problematic orangekit-contracts .ts file is never pulled in).
       "@mezo-org/orangekit-smart-account/src/lib/utils/chains":
         "@mezo-org/orangekit-smart-account/dist/src/lib/utils/chains.js",
+
+      // WalletConnect's logger imports `pino` even for browser bundles.
+      // Alias to a local stub to avoid bundling Node logger internals in web.
+      pino: "./src/lib/pino-browser-stub.ts",
+      // MetaMask SDK imports this React Native package in its browser bundle.
+      "@react-native-async-storage/async-storage": "./src/lib/empty-stub.ts",
+
+      // Ensure all bundles (including transpiled SDK internals) use one React.
+      react: reactRoot,
+      "react-dom": reactDomRoot,
+      "react/jsx-runtime": reactJsxRuntime,
+      "react/jsx-dev-runtime": reactJsxDevRuntime,
     },
   },
 
   // ---------- Webpack (CI / next build without Turbopack) ----------
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.resolve = config.resolve ?? {};
     config.resolve.alias = {
       ...(config.resolve.alias ?? {}),
       "@mezo-org/orangekit-smart-account/src/lib/utils/chains":
         "@mezo-org/orangekit-smart-account/dist/src/lib/utils/chains.js",
+      // Match the exact bare import used by @walletconnect/logger.
+      "pino$": path.resolve(process.cwd(), "src/lib/pino-browser-stub.ts"),
+      pino: path.resolve(process.cwd(), "src/lib/pino-browser-stub.ts"),
+      // MetaMask SDK imports this React Native package in its browser bundle.
+      "@react-native-async-storage/async-storage": path.resolve(process.cwd(), "src/lib/empty-stub.ts"),
     };
+
+    // Only force React singleton in browser bundles; server aliases can break
+    // Next internal React cache wiring during data collection.
+    if (!isServer) {
+      config.resolve.alias = {
+        ...(config.resolve.alias ?? {}),
+        react: reactRoot,
+        "react-dom": reactDomRoot,
+        "react/jsx-runtime": reactJsxRuntime,
+        "react/jsx-dev-runtime": reactJsxDevRuntime,
+      };
+    }
+
     return config;
   },
 };

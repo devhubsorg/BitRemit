@@ -9,6 +9,7 @@ import { prisma } from "@bitremit/database";
 // Response is cached by Next.js for 60 seconds (ISR revalidation).
 // ---------------------------------------------------------------------------
 
+export const dynamic = "force-dynamic";
 export const revalidate = 60;
 
 export async function GET() {

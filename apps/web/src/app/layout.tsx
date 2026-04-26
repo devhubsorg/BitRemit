@@ -28,7 +28,12 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body>
+      {/*
+       * suppressHydrationWarning on <body> prevents false hydration errors
+       * from browser extensions (e.g. ColorZilla adds cz-shortcut-listen)
+       * that mutate <body> attributes before React hydrates.
+       */}
+      <body suppressHydrationWarning>
         <Web3Providers>{children}</Web3Providers>
       </body>
     </html>

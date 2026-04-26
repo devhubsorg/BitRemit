@@ -6,6 +6,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:web": "pnpm --filter web dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean"
@@ -17,7 +18,11 @@
   },
   "pnpm": {
     "overrides": {
-      "typescript": "5.9.3"
+      "typescript": "5.9.3",
+      "react": "18.3.1",
+      "react-dom": "18.3.1",
+      "@types/react": "18.3.12",
+      "@types/react-dom": "18.3.1"
     }
   },
   "engines": {
@@ -40,5 +45,8 @@
     "url": "https://github.com/Phayvour1/BitRemit/issues"
   },
   "homepage": "https://github.com/Phayvour1/BitRemit#readme",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "pino": "7.11.0"
+  }
 }
