@@ -10,6 +10,8 @@ export default defineConfig({
   schema: "./prisma/schema.prisma",
   datasource: {
     url: env("DATABASE_URL"),
-    directUrl: env("DATABASE_URL_DIRECT"),
+    ...(process.env.DATABASE_URL_DIRECT
+      ? { directUrl: env("DATABASE_URL_DIRECT") }
+      : {}),
   },
 });

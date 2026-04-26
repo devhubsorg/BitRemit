@@ -5,11 +5,11 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm@9
 
-# Copy package files
-COPY package.json pnpm-lock.yaml* ./
+# Copy package manifest (context is mocks/mpesa/)
+COPY package.json ./
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
+# Install dependencies (no workspace lockfile needed — no @bitremit/* deps)
+RUN pnpm install
 
 # Copy source
 COPY . .
@@ -19,4 +19,4 @@ RUN pnpm run build
 
 EXPOSE 3001
 
-CMD ["pnpm", "start"]
+CMD ["node", "dist/server.js"]

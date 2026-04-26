@@ -6,25 +6,23 @@
   "scripts": {
     "dev:whatsapp": "tsx --env-file=../../.env.local whatsapp/index.ts",
     "dev:telegram": "tsx --env-file=../../.env.local telegram/index.ts",
-    "build": "tsc"
+    "build": "tsc",
+    "start": "tsx whatsapp/index.ts"
   },
   "dependencies": {
+    "@bitremit/database": "workspace:*",
+    "dotenv": "^16.4.5",
     "express": "^5.0.0",
-    "twilio": "^5.13.1",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
     "dotenv": "^16.4.5",
-    "grammy": "latest",
-    "@grammyjs/conversations": "latest",
-    "@upstash/redis": "latest",
     "@bitremit/database": "workspace:*",
     "web3": "workspace:*"
   },
   "devDependencies": {
-    "tsx": "^4.19.2",
-    "typescript": "^5.9.3",
     "@types/express": "^5.0.0",
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20.0.0",
-    "@types/jsonwebtoken": "^9.0.7"
+    "typescript": "^5.9.3"
   }
 }
