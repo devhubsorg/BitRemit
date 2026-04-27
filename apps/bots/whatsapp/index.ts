@@ -13,6 +13,10 @@ dotenv.config();
 
 const app = express();
 app.use(express.urlencoded({ extended: false }));
+app.use((req, res, next) => {
+    console.log(`[WhatsApp] Incoming ${req.method} request to ${req.url}`);
+    next();
+});
 
 // Setup Redis
 const getRedisConnection = () => {
@@ -41,66 +45,38 @@ function generateUserToken(address: string, userId: string) {
 }
 
 // Ensure the caller is genuinely Twilio
-function validateTwilioRequest(
-  req: Request,
-  res: Response,
-  next: express.NextFunction,
-) {
-  console.log("WEBHOOK_URL env:", process.env.TWILIO_WEBHOOK_URL);
-  console.log("Twilio signature:", req.headers["x-twilio-signature"]);
-  console.log("Body:", req.body);
-  const twilioSignature = req.headers["x-twilio-signature"] as string;
+function validateTwilioRequest(req: Request, res: Response, next: express.NextFunction) {
+    const twilioSignature = req.headers['x-twilio-signature'] as string;
+    
+    // In Express, req.originalUrl includes the query string which is correct for Twilio validation
+    let url = process.env.TWILIO_WEBHOOK_URL || `https://${req.get('host')}${req.originalUrl}`;
+    
+    // Fallback logic for localhost testing via browser GET without ngrok mappings
+    if (!twilioSignature && req.method === 'GET') {
+        return res.status(200).send('BitRemit WhatsApp Bot is Online (GET test successful). Please ensure Twilio is configured to use POST or pass valid signatures.');
+    }
 
-  // FIX 2: Always use the explicit TWILIO_WEBHOOK_URL env var for signature validation.
-  // On Railway, req.get('host') returns the internal Railway host, NOT your public domain.
-  // This caused twilio.validateRequest() to compare against the wrong URL, rejecting every request.
-  // TWILIO_WEBHOOK_URL must be set in Railway variables to your exact public webhook URL,
-  // e.g. https://your-app.up.railway.app/webhook/twilio
-  // It must match character-for-character what you entered in the Twilio sandbox settings.
-  const webhookUrl = process.env.TWILIO_WEBHOOK_URL;
-
-  if (!webhookUrl) {
-    console.error(
-      "[WhatsApp] TWILIO_WEBHOOK_URL is not set. Cannot validate Twilio signature.",
+    const params = req.method === 'POST' ? req.body : req.query;
+    
+    // Skip auth token check if we are in local dev and explicitly ignoring it
+    if (!process.env.TWILIO_AUTH_TOKEN) {
+        console.warn('[WhatsApp] Missing TWILIO_AUTH_TOKEN, skipping signature validation.');
+        return next();
+    }
+    
+    const isValid = twilio.validateRequest(
+        process.env.TWILIO_AUTH_TOKEN,
+        twilioSignature,
+        url,
+        params as Record<string, any>
     );
-    return res
-      .status(500)
-      .send("Server misconfiguration: TWILIO_WEBHOOK_URL missing.");
-  }
-
-  // Allow GET requests through for health/status checks without signature validation
-  if (!twilioSignature && req.method === "GET") {
-    return res
-      .status(200)
-      .send(
-        "BitRemit WhatsApp Bot is Online. Twilio should send POST requests with a valid signature.",
-      );
-  }
-
-  const params = req.method === "POST" ? req.body : req.query;
-
-  if (!process.env.TWILIO_AUTH_TOKEN) {
-    console.warn(
-      "[WhatsApp] Missing TWILIO_AUTH_TOKEN, skipping signature validation.",
-    );
-    return next();
-  }
-
-  const isValid = twilio.validateRequest(
-    process.env.TWILIO_AUTH_TOKEN,
-    twilioSignature,
-    webhookUrl, // Always the explicit env var — never derived from the request
-    params as Record<string, any>,
-  );
-
-  if (isValid) {
-    next();
-  } else {
-    console.error(
-      `[WhatsApp] Invalid Twilio Signature. Validated against URL: ${webhookUrl}`,
-    );
-    res.status(403).send("Forbidden");
-  }
+    
+    if (isValid) {
+        next();
+    } else {
+        console.error('[WhatsApp] Invalid Twilio Signature.');
+        res.status(403).send('Forbidden');
+    }
 }
 
 // function validateTwilioRequest(

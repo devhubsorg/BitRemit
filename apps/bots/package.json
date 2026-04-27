@@ -4,17 +4,20 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "tsx --env-file=../../.env.local whatsapp/index.ts",
+    "dev:whatsapp": "tsx --env-file=../../.env.local whatsapp/index.ts",
+    "dev:telegram": "tsx --env-file=../../.env.local telegram/index.ts",
     "build": "tsc",
     "start": "tsx whatsapp/index.ts"
   },
   "dependencies": {
     "@bitremit/database": "workspace:*",
+    "@grammyjs/conversations": "^2.1.1",
+    "@upstash/redis": "^1.37.0",
     "dotenv": "^16.4.5",
     "express": "^5.0.0",
+    "grammy": "^1.42.0",
     "ioredis": "^5.4.1",
     "jsonwebtoken": "^9.0.2",
-    "tsx": "^4.21.0",
     "twilio": "^5.13.1",
     "web3": "workspace:*"
   },
