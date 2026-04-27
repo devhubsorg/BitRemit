@@ -58,10 +58,11 @@ const nextConfig: NextConfig = {
       "@react-native-async-storage/async-storage": "./src/lib/empty-stub.ts",
 
       // Ensure all bundles (including transpiled SDK internals) use one React.
-      react: reactRoot,
-      "react-dom": reactDomRoot,
-      "react/jsx-runtime": reactJsxRuntime,
-      "react/jsx-dev-runtime": reactJsxDevRuntime,
+      // Force React 18.3.1 singleton across the app to satisfy SDK requirements.
+      react: path.relative(process.cwd(), reactRoot),
+      "react-dom": path.relative(process.cwd(), reactDomRoot),
+      "react/jsx-runtime": path.relative(process.cwd(), reactJsxRuntime),
+      "react/jsx-dev-runtime": path.relative(process.cwd(), reactJsxDevRuntime),
     },
   },
 
