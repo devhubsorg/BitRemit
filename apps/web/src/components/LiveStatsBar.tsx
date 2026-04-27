@@ -47,15 +47,17 @@ type StatItem = {
 export async function LiveStatsBar() {
   const stats = await getStats();
 
-  const items: StatItem[] = [
+  const items: (StatItem | null)[] = [
     {
       label: "Total Sent",
       value: stats ? formatUSD(stats.totalSentUSD) : "$0",
     },
+    null, // divider
     {
       label: "Total Transfers",
       value: stats ? stats.totalTransactions.toLocaleString() : "0",
     },
+    null, // divider
     {
       label: "Average Fee",
       value: stats ? `${stats.averageFeePercent}%` : "1%",
@@ -64,28 +66,60 @@ export async function LiveStatsBar() {
 
   return (
     <section
-      className="border-y border-white/6 bg-white/2"
+      id="stats"
+      className="border-y px-[5%] py-16"
+      style={{
+        background: "#161B22",
+        borderColor: "#30363D",
+      }}
       aria-label="Live protocol statistics"
     >
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 divide-y divide-white/6 sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          {items.map((item) => (
+      <div
+        className="mx-auto grid max-w-225 items-center"
+        style={{
+          gridTemplateColumns: "1fr 1px 1fr 1px 1fr",
+        }}
+      >
+        {items.map((item, idx) =>
+          item === null ? (
+            <div
+              key={`div-${idx}`}
+              style={{
+                width: "1px",
+                height: "60px",
+                background: "#30363D",
+                margin: "auto",
+              }}
+            />
+          ) : (
             <div
               key={item.label}
-              className="flex flex-col items-center py-6 sm:py-0"
+              className="flex flex-col items-center px-10 py-6"
             >
               <span
-                className="text-3xl font-extrabold tabular-nums tracking-tight"
-                style={{ color: "#F7931A" }}
+                className="mb-2 tabular-nums leading-none tracking-tight text-white"
+                style={{
+                  fontFamily: "var(--font-display)",
+                  fontWeight: 800,
+                  fontSize: "clamp(32px, 5vw, 48px)",
+                  letterSpacing: "-0.03em",
+                }}
               >
-                {item.value}
+                {item.label === "Average Fee" ? (
+                  <span style={{ color: "#22C55E" }}>{item.value}</span>
+                ) : (
+                  <span style={{ color: "#F7931A" }}>{item.value}</span>
+                )}
               </span>
-              <span className="mt-1 text-sm font-medium text-zinc-500">
+              <span
+                className="text-[12px] font-medium uppercase tracking-[0.08em]"
+                style={{ color: "#8B949E" }}
+              >
                 {item.label}
               </span>
             </div>
-          ))}
-        </div>
+          ),
+        )}
       </div>
     </section>
   );

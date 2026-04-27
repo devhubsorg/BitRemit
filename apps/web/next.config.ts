@@ -67,8 +67,14 @@ const nextConfig: NextConfig = {
   },
 
   // ---------- Webpack (CI / next build without Turbopack) ----------
-  webpack: (config, { isServer }) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  webpack: (config: any, { isServer, dev }: { isServer: boolean; dev: boolean }) => {
     config.resolve = config.resolve ?? {};
+    if (dev) {
+      // OneDrive-synced workspaces can intermittently lose webpack pack files.
+      // Disabling filesystem cache avoids ENOENT churn during local dev.
+      config.cache = false;
+    }
     config.resolve.alias = {
       ...(config.resolve.alias ?? {}),
       "@mezo-org/orangekit-smart-account/src/lib/utils/chains":

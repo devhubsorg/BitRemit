@@ -1,3 +1,5 @@
+import React from "react";
+
 type Step = {
   number: string;
   title: string;
@@ -6,22 +8,22 @@ type Step = {
 
 const STEPS: Step[] = [
   {
-    number: "01",
-    title: "Lock BTC as collateral",
+    number: "1",
+    title: "Lock BTC",
     description:
-      "Connect your Bitcoin wallet and deposit BTC into the BitRemit vault on Mezo Testnet. Your Bitcoin stays yours — it's collateral, not a sale.",
+      "Deposit your Bitcoin as collateral in the BitRemit vault on Mezo. Your BTC stays yours — you're just borrowing against it.",
   },
   {
-    number: "02",
-    title: "Borrow MUSD at 1%",
+    number: "2",
+    title: "Borrow MUSD",
     description:
-      "Instantly borrow MUSD (Mezo USD) against your BTC at a flat 1% fee. No credit checks, no KYC for the sender. Just fast, transparent lending.",
+      "Borrow Mezo's stablecoin at a fixed 1% rate. Keep your Bitcoin. No selling, no tax events, no waiting.",
   },
   {
-    number: "03",
-    title: "Family gets local cash",
+    number: "3",
+    title: "Send",
     description:
-      "Enter the recipient's phone number and choose M-Pesa, GCash, or MTN MoMo. They receive local currency to their mobile wallet in minutes.",
+      "Choose a recipient by phone number. They receive cash in seconds via M-Pesa, GCash, or MTN MoMo. They never see crypto.",
   },
 ];
 
@@ -29,54 +31,88 @@ export function HowItWorks() {
   return (
     <section
       id="how-it-works"
-      className="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8"
+      className="px-[5%] py-24"
+      style={{ background: "#0D1117" }}
     >
-      <div className="mb-14 text-center">
-        <h2 className="text-3xl font-bold tracking-tight text-white sm:text-4xl">
-          How it works
-        </h2>
-        <p className="mt-4 text-base text-zinc-400">
-          Three steps. No crypto jargon for your recipient. No bank fees.
-        </p>
-      </div>
-
-      <div className="relative">
-        {/* Connector line (desktop only) */}
+      <div className="mx-auto max-w-300">
+        {/* Section label */}
         <div
-          className="pointer-events-none absolute left-0 right-0 top-9 hidden h-px lg:block"
-          style={{
-            background:
-              "linear-gradient(90deg, transparent 0%, #F7931A40 20%, #F7931A40 80%, transparent 100%)",
-          }}
-          aria-hidden="true"
-        />
+          className="mb-4 flex items-center gap-2.5 text-[11px] font-medium uppercase tracking-[0.12em]"
+          style={{ color: "#F7931A" }}
+        >
+          <span className="block h-px w-6" style={{ background: "#F7931A" }} />
+          The Process
+        </div>
 
-        <div className="grid gap-10 lg:grid-cols-3">
-          {STEPS.map((step) => (
-            <div key={step.number} className="relative flex flex-col gap-5">
-              {/* Number circle */}
-              <div className="flex items-center gap-4">
+        <h2
+          className="mb-16 leading-tight tracking-tight text-white"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: "clamp(32px, 4vw, 48px)",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          Three steps.
+          <br />
+          Under 60 seconds.
+        </h2>
+
+        {/* Steps row */}
+        <div className="flex flex-col gap-8 lg:flex-row lg:items-start lg:gap-0">
+          {STEPS.map((step, idx) => (
+            <React.Fragment key={step.number}>
+              <div className="flex flex-1 flex-col lg:pr-10">
+                {/* Number circle */}
                 <div
-                  className="relative z-10 flex h-18 w-18 shrink-0 items-center justify-center rounded-full border-2 text-lg font-black text-black"
+                  className="mb-6 flex h-14 w-14 shrink-0 items-center justify-center rounded-full border-2 text-[22px] font-extrabold"
                   style={{
-                    backgroundColor: "#F7931A",
+                    background: "rgba(247,147,26,0.12)",
                     borderColor: "#F7931A",
+                    color: "#F7931A",
+                    fontFamily: "var(--font-display)",
                   }}
                 >
                   {step.number}
                 </div>
-                {/* Arrow connector (mobile/tablet — between items) */}
-                <div className="flex-1 lg:hidden" aria-hidden="true" />
-              </div>
-
-              {/* Content */}
-              <div className="rounded-2xl border border-white/8 bg-white/3 p-6">
-                <h3 className="text-lg font-bold text-white">{step.title}</h3>
-                <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                <h3
+                  className="mb-2.5 text-[22px] font-bold tracking-tight text-white"
+                  style={{ fontFamily: "var(--font-display)" }}
+                >
+                  {step.title}
+                </h3>
+                <p
+                  className="text-[15px] leading-relaxed"
+                  style={{ color: "#8B949E" }}
+                >
                   {step.description}
                 </p>
               </div>
-            </div>
+
+              {/* Arrow connector (desktop only, not after last step) */}
+              {idx < STEPS.length - 1 && (
+                <div
+                  className="hidden w-15 shrink-0 items-start pt-7 lg:flex"
+                  aria-hidden="true"
+                >
+                  <div
+                    className="relative w-full"
+                    style={{
+                      height: "2px",
+                      background:
+                        "linear-gradient(90deg, #F7931A, rgba(247,147,26,0.3))",
+                    }}
+                  >
+                    <span
+                      className="absolute -right-1 top-1/2 -translate-y-1/2 text-sm leading-none"
+                      style={{ color: "rgba(247,147,26,0.5)" }}
+                    >
+                      ▶
+                    </span>
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
           ))}
         </div>
       </div>

@@ -1,52 +1,55 @@
-"use client";
-
 import Link from "next/link";
-import { ConnectButton } from "./ConnectButton";
 
 export function Navbar() {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-white/6 bg-[#0a0a0a]/80 backdrop-blur-md">
-      <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        {/* Logo */}
-        <Link href="/" className="flex items-center gap-2">
-          <span
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-[#0a0a0a] font-black text-sm"
-            style={{ backgroundColor: "#F7931A" }}
+    <nav
+      className="sticky top-0 z-90 flex h-16 items-center border-b px-[5%] backdrop-blur-md transition-[top] duration-300"
+      style={{
+        background: "rgba(13,17,23,0.85)",
+        borderColor: "#30363D",
+      }}
+    >
+      <div className="mx-auto flex w-full max-w-300 items-center justify-between">
+        {/* Wordmark */}
+        <Link
+          href="/"
+          className="flex items-center gap-1.5 no-underline"
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 800,
+            fontSize: "20px",
+            color: "#F7931A",
+            letterSpacing: "-0.02em",
+          }}
+        >
+          <svg
+            width="20"
+            height="20"
+            viewBox="0 0 20 20"
+            fill="none"
+            aria-hidden="true"
           >
-            ₿
-          </span>
-          <span className="text-lg font-bold tracking-tight text-white">
-            BitRemit
-          </span>
+            <path
+              d="M10 2L12.4 7.8L18.5 8.3L14 12.3L15.4 18.3L10 15.1L4.6 18.3L6 12.3L1.5 8.3L7.6 7.8L10 2Z"
+              fill="#F7931A"
+            />
+          </svg>
+          BitRemit
         </Link>
 
-        {/* Nav links */}
-        <nav className="hidden items-center gap-8 md:flex">
-          <a
-            href="#how-it-works"
-            className="text-sm font-medium text-zinc-400 transition-colors hover:text-white"
-          >
-            How It Works
-          </a>
-          <a
-            href="#rails"
-            className="text-sm font-medium text-zinc-400 transition-colors hover:text-white"
-          >
-            Payment Rails
-          </a>
-          <Link
-            href="/send"
-            className="text-sm font-medium text-zinc-400 transition-colors hover:text-white"
-          >
-            Send Money
-          </Link>
-        </nav>
-
-        {/* Wallet connect */}
-        <div className="flex items-center gap-3">
-          <ConnectButton />
-        </div>
+        {/* CTA */}
+        <Link
+          href="/send"
+          className="flex items-center gap-1.5 rounded-lg border-none px-5 py-2.5 text-sm font-medium transition-[opacity,transform] duration-150 hover:opacity-90 hover:-translate-y-px"
+          style={{
+            background: "#F7931A",
+            color: "#0D1117",
+            fontFamily: "var(--font-sans)",
+          }}
+        >
+          Connect Wallet
+        </Link>
       </div>
-    </header>
+    </nav>
   );
 }

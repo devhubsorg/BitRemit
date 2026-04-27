@@ -1,36 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { useAccount } from "wagmi";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useState } from "react";
 
 export default function SendPage() {
-  const { address, isConnected } = useAccount();
-  const { openConnectModal } = useConnectModal();
   const [recipient, setRecipient] = useState("");
   const [amount, setAmount] = useState("");
   const [rail, setRail] = useState("MPESA");
-
-  if (!isConnected) {
-    return (
-      <div className="flex min-h-screen flex-col items-center justify-center bg-[#0a0a0a] px-4 text-center text-white">
-        <div className="max-w-md">
-          <h1 className="mb-4 text-4xl font-extrabold">Connect Your Wallet</h1>
-          <p className="mb-8 text-zinc-400">
-            To send money, you need to connect your Bitcoin wallet first.
-          </p>
-          <button
-            onClick={openConnectModal}
-            className="inline-flex items-center gap-2 rounded-lg px-6 py-3 font-semibold text-black transition-all hover:scale-105"
-            style={{ backgroundColor: "#F7931A" }}
-          >
-            Connect Wallet
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="flex min-h-screen flex-col bg-[#0a0a0a] pt-24 text-white">
@@ -38,7 +14,8 @@ export default function SendPage() {
         <div className="mb-8">
           <h1 className="text-4xl font-extrabold">Send Money Home</h1>
           <p className="mt-2 text-zinc-400">
-            Connected as {address?.slice(0, 6)}…{address?.slice(-4)}
+            Demo flow: wallet connect temporarily disabled while SDK
+            compatibility is stabilized.
           </p>
         </div>
 
@@ -62,9 +39,7 @@ export default function SendPage() {
                       : "border border-white/10 text-zinc-400 hover:border-white/20"
                   }`}
                   style={
-                    rail === r
-                      ? { backgroundColor: "#F7931A" }
-                      : undefined
+                    rail === r ? { backgroundColor: "#F7931A" } : undefined
                   }
                 >
                   {r === "MPESA"
