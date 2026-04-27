@@ -27,10 +27,10 @@ importers:
         specifier: workspace:*
         version: link:../../packages/database
       '@grammyjs/conversations':
-        specifier: latest
+        specifier: ^2.1.1
         version: 2.1.1(grammy@1.42.0)
       '@upstash/redis':
-        specifier: latest
+        specifier: ^1.37.0
         version: 1.37.0
       dotenv:
         specifier: ^16.4.5
@@ -39,7 +39,7 @@ importers:
         specifier: ^5.0.0
         version: 5.2.1
       grammy:
-        specifier: latest
+        specifier: ^1.42.0
         version: 1.42.0
       ioredis:
         specifier: ^5.4.1
@@ -47,9 +47,6 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.3
-      tsx:
-        specifier: ^4.21.0
-        version: 4.21.0
       twilio:
         specifier: ^5.13.1
         version: 5.13.1
