@@ -2,8 +2,44 @@ import { SignJWT } from "jose";
 import { SiweMessage } from "siwe";
 import { NextResponse } from "next/server";
 import prisma from "@bitremit/database";
-import { redis } from "@/lib/redis";
+import { SESSION_COOKIE_NAME } from "web3";
 import { getJwtSecret } from "@/lib/jwt";
+import { consumeNonce } from "@/lib/nonceStore";
+
+const SECP256K1_N = BigInt(
+  "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
+);
+const SECP256K1_HALF_N = SECP256K1_N / BigInt(2);
+
+function normalizeLowSSignature(signature: string): string {
+  if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
+    return signature;
+  }
+
+  const hex = signature.slice(2);
+  const rHex = hex.slice(0, 64);
+  const sHex = hex.slice(64, 128);
+  const vHex = hex.slice(128, 130);
+
+  const s = BigInt(`0x${sHex}`);
+  if (s <= SECP256K1_HALF_N) {
+    return signature;
+  }
+
+  const normalizedS = SECP256K1_N - s;
+
+  let v = Number.parseInt(vHex, 16);
+  if (v === 27 || v === 28) {
+    v = v === 27 ? 28 : 27;
+  } else {
+    v = v === 0 ? 1 : 0;
+  }
+
+  const normalizedSHex = normalizedS.toString(16).padStart(64, "0");
+  const normalizedVHex = v.toString(16).padStart(2, "0");
+
+  return `0x${rHex}${normalizedSHex}${normalizedVHex}`;
+}
 
 /**
  * POST /api/auth/verify
@@ -43,13 +79,25 @@ export async function POST(request: Request): Promise<NextResponse> {
   const siweMessage = new SiweMessage(message);
 
   let verifyResult: Awaited<ReturnType<SiweMessage["verify"]>>;
+  const normalizedSignature = normalizeLowSSignature(signature);
   try {
     verifyResult = await siweMessage.verify({ signature });
   } catch {
-    return NextResponse.json(
-      { error: "Signature verification failed" },
-      { status: 401 },
-    );
+    if (normalizedSignature === signature) {
+      return NextResponse.json(
+        { error: "Signature verification failed" },
+        { status: 401 },
+      );
+    }
+
+    try {
+      verifyResult = await siweMessage.verify({ signature: normalizedSignature });
+    } catch {
+      return NextResponse.json(
+        { error: "Signature verification failed" },
+        { status: 401 },
+      );
+    }
   }
 
   if (!verifyResult.success) {
@@ -61,18 +109,24 @@ export async function POST(request: Request): Promise<NextResponse> {
 
   const { nonce, address } = siweMessage;
 
-  // Confirm nonce exists in Redis (guards against replay attacks)
+  // Confirm nonce exists in nonce store (guards against replay attacks)
   const nonceKey = `nonce:${nonce}`;
-  const storedNonce = await redis.get(nonceKey);
-  if (!storedNonce) {
+  let nonceIsValid = false;
+  try {
+    nonceIsValid = await consumeNonce(nonceKey);
+  } catch {
+    return NextResponse.json(
+      { error: "Nonce service unavailable" },
+      { status: 503 },
+    );
+  }
+
+  if (!nonceIsValid) {
     return NextResponse.json(
       { error: "Nonce expired or already used" },
       { status: 401 },
     );
   }
-
-  // Invalidate the nonce immediately (one-time use)
-  await redis.del(nonceKey);
 
   // Find or create the user record
   const user = await prisma.user.upsert({
@@ -90,7 +144,18 @@ export async function POST(request: Request): Promise<NextResponse> {
     .setExpirationTime("7d")
     .sign(secret);
 
-  return NextResponse.json({ token, address: user.address });
+  const response = NextResponse.json({ token, address: user.address });
+  response.cookies.set({
+    name: SESSION_COOKIE_NAME,
+    value: token,
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: "lax",
+    path: "/",
+    maxAge: 60 * 60 * 24 * 7,
+  });
+
+  return response;
 }
 
 export const dynamic = "force-dynamic";

@@ -16,7 +16,7 @@ export async function GET(
 ) {
   // ── Auth ────────────────────────────────────────────────────────────────
   const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof Response) return auth;
   const { userId } = auth;
 
   const { id } = await params;

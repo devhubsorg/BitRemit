@@ -6,6 +6,7 @@
   "scripts": {
     "build": "turbo run build",
     "dev": "turbo run dev",
+    "dev:web": "pnpm --filter web dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "clean": "turbo run clean"
@@ -40,5 +41,8 @@
     "url": "https://github.com/Phayvour1/BitRemit/issues"
   },
   "homepage": "https://github.com/Phayvour1/BitRemit#readme",
-  "type": "module"
+  "type": "module",
+  "dependencies": {
+    "pino": "7.11.0"
+  }
 }

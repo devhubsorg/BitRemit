@@ -84,7 +84,7 @@ const RAIL_NAMES: Record<string, string> = {
 
 export async function GET(request: NextRequest) {
   const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof Response) return auth;
   const { userId } = auth;
 
   const recipients = await prisma.recipient.findMany({
@@ -115,7 +115,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────
   const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof Response) return auth;
   // userId is available but recipients are not user-scoped in the current
   // schema — the Recipient is protocol-global, keyed by phone hash.
 

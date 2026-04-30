@@ -1,8 +1,10 @@
 "use client";
 
+import { usePathname, useRouter } from "next/navigation";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
-import { useAccount, useDisconnect } from "wagmi";
-import { useState } from "react";
+import { SiweMessage } from "siwe";
+import { useAccount, useChainId, useDisconnect, useSignMessage } from "wagmi";
+import { useEffect, useRef, useState } from "react";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -21,16 +23,126 @@ function truncateAddress(address: string): string {
 
 export function ConnectButton() {
   const { address, isConnected } = useAccount();
+  const chainId = useChainId();
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
+  const { signMessageAsync } = useSignMessage();
+  const router = useRouter();
+  const pathname = usePathname();
+  const wasConnectedRef = useRef(false);
+  const authenticatedAddressRef = useRef<string | null>(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const navigateToDashboard = () => {
+    if (pathname !== "/dashboard") {
+      router.replace("/dashboard");
+    }
+  };
+
+  useEffect(() => {
+    if (!isConnected || !address) {
+      wasConnectedRef.current = false;
+      authenticatedAddressRef.current = null;
+      return;
+    }
+
+    let cancelled = false;
+
+    const ensureSession = async () => {
+      const normalizedAddress = address.toLowerCase();
+
+      if (authenticatedAddressRef.current === normalizedAddress) {
+        if (!cancelled) {
+          navigateToDashboard();
+        }
+        return;
+      }
+
+      setIsAuthenticating(true);
+
+      try {
+        const sessionResponse = await fetch("/api/auth/session", {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+
+        if (sessionResponse.ok) {
+          const session = (await sessionResponse.json()) as { address?: string };
+          if (session.address?.toLowerCase() === normalizedAddress) {
+            authenticatedAddressRef.current = normalizedAddress;
+            if (!cancelled) {
+              navigateToDashboard();
+            }
+            return;
+          }
+        }
+
+        const nonceResponse = await fetch("/api/auth/nonce", {
+          cache: "no-store",
+          credentials: "same-origin",
+        });
+        if (!nonceResponse.ok) {
+          throw new Error("Failed to create auth nonce");
+        }
+
+        const { nonce } = (await nonceResponse.json()) as { nonce?: string };
+        if (!nonce) {
+          throw new Error("Missing auth nonce");
+        }
+
+        const message = new SiweMessage({
+          domain: window.location.host,
+          address,
+          statement: "Sign in to BitRemit",
+          uri: window.location.origin,
+          version: "1",
+          chainId,
+          nonce,
+        }).prepareMessage();
+
+        const signature = await signMessageAsync({ message });
+        const verifyResponse = await fetch("/api/auth/verify", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "same-origin",
+          body: JSON.stringify({ message, signature }),
+        });
+
+        if (!verifyResponse.ok) {
+          throw new Error("Failed to verify wallet session");
+        }
+
+        authenticatedAddressRef.current = normalizedAddress;
+
+        if (!cancelled) {
+          navigateToDashboard();
+        }
+      } catch (error) {
+        console.error("Wallet authentication failed", error);
+      } finally {
+        if (!cancelled) {
+          setIsAuthenticating(false);
+        }
+        wasConnectedRef.current = isConnected;
+      }
+    };
+
+    void ensureSession();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [address, chainId, isConnected, pathname, router, signMessageAsync]);
 
   // ── Disconnected state ────────────────────────────────────────────────────
   if (!isConnected || !address) {
     return (
       <button
         type="button"
-        onClick={openConnectModal}
+        onClick={() => openConnectModal?.()}
         className="connect-btn"
         style={btnStyle}
       >
@@ -77,8 +189,13 @@ export function ConnectButton() {
           <button
             type="button"
             role="menuitem"
-            onClick={() => {
+            onClick={async () => {
+              await fetch("/api/auth/logout", {
+                method: "POST",
+                credentials: "same-origin",
+              });
               disconnect();
+              authenticatedAddressRef.current = null;
               setShowDisconnect(false);
             }}
             style={disconnectBtnStyle}
@@ -86,7 +203,7 @@ export function ConnectButton() {
             onBlur={() => setShowDisconnect(false)}
           >
             <DisconnectIcon />
-            Disconnect
+            {isAuthenticating ? "Authenticating..." : "Disconnect"}
           </button>
         </div>
       )}

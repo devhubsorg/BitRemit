@@ -48,7 +48,7 @@ const querySchema = z.object({
 export async function GET(request: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────
   const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof Response) return auth;
   const { userId } = auth;
 
   // ── Parse query params ───────────────────────────────────────────────────
@@ -101,9 +101,29 @@ export async function GET(request: NextRequest) {
   ]);
 
   const totalPages = Math.ceil(total / limit);
+  const normalizedTransactions = transactions.map((transaction) => ({
+    id: transaction.id,
+    recipient: {
+      name: transaction.recipient.name,
+      phoneNumber: transaction.recipient.phoneNumber,
+      initials: transaction.recipient.name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((part) => part[0]?.toUpperCase() ?? "")
+        .join("") || "NA",
+    },
+    railType: transaction.railType,
+    musdAmount: transaction.musdAmount.toString(),
+    fiatAmount: transaction.fiatAmount.toString(),
+    fiatCurrency: transaction.fiatCurrency,
+    status: transaction.status,
+    createdAt: transaction.createdAt.toISOString(),
+    txHash: transaction.txHash ?? undefined,
+  }));
 
   return NextResponse.json({
-    transactions,
+    transactions: normalizedTransactions,
     total,
     page,
     totalPages,

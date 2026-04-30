@@ -1,16 +1,28 @@
 // layout.tsx is intentionally a SERVER component.
-// Web3Providers is loaded via a thin "use client" wrapper with next/dynamic
-// (ssr: false) so the wallet SDK — which bundles a pre-React 19 CJS
-// jsx-runtime — never runs during server-side rendering / static generation.
+// Web3 providers are loaded through a client-only dynamic wrapper to avoid
+// evaluating wallet SDK code during SSR/module evaluation.
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import Web3Providers from "./Web3ProvidersDynamic";
+import { Syne, DM_Sans } from "next/font/google";
 
-// RainbowKit styles must be imported once, at the root. Importing inside a
-// server component is fine — Next.js bundles it as global CSS.
-import "@rainbow-me/rainbowkit/styles.css";
 import "./globals.css";
+import "@rainbow-me/rainbowkit/styles.css";
+import Web3ProvidersDynamic from "./Web3ProvidersDynamic";
+
+const syne = Syne({
+  subsets: ["latin"],
+  variable: "--font-syne",
+  weight: ["400", "600", "700", "800"],
+  display: "swap",
+});
+
+const dmSans = DM_Sans({
+  subsets: ["latin"],
+  variable: "--font-dm-sans",
+  weight: ["300", "400", "500"],
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "BitRemit — Bitcoin remittances for Africa and Southeast Asia",
@@ -27,9 +39,18 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" suppressHydrationWarning>
-      <body>
-        <Web3Providers>{children}</Web3Providers>
+    <html
+      lang="en"
+      suppressHydrationWarning
+      className={`${syne.variable} ${dmSans.variable}`}
+    >
+      {/*
+       * suppressHydrationWarning on <body> prevents false hydration errors
+       * from browser extensions (e.g. ColorZilla adds cz-shortcut-listen)
+       * that mutate <body> attributes before React hydrates.
+       */}
+      <body suppressHydrationWarning>
+        <Web3ProvidersDynamic>{children}</Web3ProvidersDynamic>
       </body>
     </html>
   );

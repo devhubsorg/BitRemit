@@ -157,7 +157,7 @@ try {
       args: [minterRole, SIGNER],
     });
     console.log("MINTER_ROLE:", minterRole, "| Signer has it:", hasRole);
-  } catch (e2) {
+  } catch {
     console.log("No AccessControl on mUSD token");
   }
 }

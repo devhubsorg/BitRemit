@@ -2,11 +2,12 @@
 
 import {
   getConfig,
-  mezoTestnet,
   unisatWalletMezoTestnet,
   xverseWalletMezoTestnet,
-} from "@mezo-org/passport";
+} from "@mezo-org/passport/dist/src/config";
+import { mezoTestnet } from "@mezo-org/passport/dist/src/constants";
 import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
+import { injectedWallet, metaMaskWallet } from "@rainbow-me/rainbowkit/wallets";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 import { WagmiProvider } from "wagmi";
@@ -17,6 +18,10 @@ const wagmiConfig = getConfig({
     {
       groupName: "Bitcoin Wallets",
       wallets: [xverseWalletMezoTestnet, unisatWalletMezoTestnet],
+    },
+    {
+      groupName: "EVM Wallets",
+      wallets: [injectedWallet, metaMaskWallet],
     },
   ],
   mezoNetwork: "testnet",

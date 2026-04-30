@@ -1,35 +1,15 @@
-import { jwtVerify } from "jose";
 import { NextResponse } from "next/server";
-import { getJwtSecret } from "@/lib/jwt";
+import { requireAuth } from "web3";
 
 /**
  * GET /api/auth/session
  *
- * Validates the Bearer JWT from the Authorization header.
+ * Validates the current session from either Bearer JWT or session cookie.
  * Returns the authenticated wallet address on success.
- *
- * Required env vars:
- *   JWT_SECRET — Secret used to verify session JWTs
  */
-export async function GET(request: Request): Promise<NextResponse> {
-  const authHeader = request.headers.get("authorization");
-  if (!authHeader?.startsWith("Bearer ")) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+export async function GET(request: Request): Promise<Response> {
+  const auth = await requireAuth(request);
+  if (auth instanceof Response) return auth;
 
-  const token = authHeader.slice(7); // strip "Bearer "
-
-  try {
-    const secret = getJwtSecret();
-    const { payload } = await jwtVerify(token, secret);
-
-    const address = payload["address"];
-    if (typeof address !== "string" || !address) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-
-    return NextResponse.json({ address });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  return NextResponse.json({ address: auth.address, userId: auth.userId });
 }

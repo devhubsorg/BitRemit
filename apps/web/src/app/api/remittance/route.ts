@@ -53,7 +53,7 @@ const remittanceSchema = z.object({
 export async function POST(request: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────
   const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof Response) return auth;
   const { userId } = auth;
 
   // ── Parse & validate body ───────────────────────────────────────────────
