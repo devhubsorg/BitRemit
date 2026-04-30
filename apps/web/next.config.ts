@@ -67,8 +67,7 @@ const nextConfig: NextConfig = {
   },
 
   // ---------- Webpack (CI / next build without Turbopack) ----------
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  webpack: (config: any, { isServer, dev }: { isServer: boolean; dev: boolean }) => {
+  webpack: (config, { isServer, dev }) => {
     config.resolve = config.resolve ?? {};
     if (dev) {
       // OneDrive-synced workspaces can intermittently lose webpack pack files.
@@ -80,10 +79,13 @@ const nextConfig: NextConfig = {
       "@mezo-org/orangekit-smart-account/src/lib/utils/chains":
         "@mezo-org/orangekit-smart-account/dist/src/lib/utils/chains.js",
       // Match the exact bare import used by @walletconnect/logger.
-      "pino$": path.resolve(process.cwd(), "src/lib/pino-browser-stub.ts"),
+      pino$: path.resolve(process.cwd(), "src/lib/pino-browser-stub.ts"),
       pino: path.resolve(process.cwd(), "src/lib/pino-browser-stub.ts"),
       // MetaMask SDK imports this React Native package in its browser bundle.
-      "@react-native-async-storage/async-storage": path.resolve(process.cwd(), "src/lib/empty-stub.ts"),
+      "@react-native-async-storage/async-storage": path.resolve(
+        process.cwd(),
+        "src/lib/empty-stub.ts",
+      ),
     };
 
     // Only force React singleton in browser bundles; server aliases can break

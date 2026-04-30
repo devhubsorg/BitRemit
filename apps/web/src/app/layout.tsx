@@ -1,13 +1,14 @@
 // layout.tsx is intentionally a SERVER component.
-// Web3Providers is a client boundary. Keeping it as a normal client component
-// (instead of dynamic ssr: false) allows the server to still render route
-// content and avoids blank shells when client hydration is delayed.
+// Web3 providers are loaded through a client-only dynamic wrapper to avoid
+// evaluating wallet SDK code during SSR/module evaluation.
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { Syne, DM_Sans } from "next/font/google";
 
 import "./globals.css";
+import "@rainbow-me/rainbowkit/styles.css";
+import Web3ProvidersDynamic from "./Web3ProvidersDynamic";
 
 const syne = Syne({
   subsets: ["latin"],
@@ -48,7 +49,9 @@ export default function RootLayout({ children }: { children: ReactNode }) {
        * from browser extensions (e.g. ColorZilla adds cz-shortcut-listen)
        * that mutate <body> attributes before React hydrates.
        */}
-      <body suppressHydrationWarning>{children}</body>
+      <body suppressHydrationWarning>
+        <Web3ProvidersDynamic>{children}</Web3ProvidersDynamic>
+      </body>
     </html>
   );
 }

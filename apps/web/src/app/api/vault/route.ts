@@ -106,7 +106,7 @@ function computeStatus(
 export async function GET(request: NextRequest) {
   // ── Auth ────────────────────────────────────────────────────────────────
   const auth = await requireAuth(request);
-  if (auth instanceof NextResponse) return auth;
+  if (auth instanceof Response) return auth;
   const { address, userId } = auth;
 
   const userAddress = address as Address;
@@ -133,6 +133,9 @@ export async function GET(request: NextRequest) {
       collateralAmount: cached.collateralAmount.toString(),
       borrowedMUSD: cached.borrowedMUSD.toString(),
       collateralRatio: ratioPercent,
+      collateralUsdValue: 0,
+      collateralChangePercent: 0,
+      collateralChangeUsd: 0,
       maxBorrowable,
       status: computeStatus(ratioPercent, borrowedIsZero),
     });
@@ -187,6 +190,9 @@ export async function GET(request: NextRequest) {
     collateralAmount: collateralAmountStr,
     borrowedMUSD: borrowedMUSDStr,
     collateralRatio: ratioPercent,
+    collateralUsdValue: 0,
+    collateralChangePercent: 0,
+    collateralChangeUsd: 0,
     maxBorrowable,
     status: computeStatus(ratioPercent, isNoDebt),
   });

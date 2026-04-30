@@ -1,6 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { ConnectButton } from "@/components/ConnectButton";
+import { useAccount } from "wagmi";
 
 export function Navbar() {
+  const { isConnected } = useAccount();
+
   return (
     <nav
       className="sticky top-0 z-90 flex h-16 items-center border-b px-[5%] backdrop-blur-md transition-[top] duration-300"
@@ -9,46 +15,75 @@ export function Navbar() {
         borderColor: "#30363D",
       }}
     >
-      <div className="mx-auto flex w-full max-w-300 items-center justify-between">
+      <div className="mx-auto grid w-full max-w-300 grid-cols-[auto_1fr_auto] items-center">
         {/* Wordmark */}
         <Link
           href="/"
-          className="flex items-center gap-1.5 no-underline"
+          className="flex items-center gap-2.5 no-underline"
           style={{
             fontFamily: "var(--font-display)",
             fontWeight: 800,
             fontSize: "20px",
-            color: "#F7931A",
+            color: "#F0F6FC",
             letterSpacing: "-0.02em",
           }}
         >
-          <svg
-            width="20"
-            height="20"
-            viewBox="0 0 20 20"
-            fill="none"
+          <span
             aria-hidden="true"
+            style={{
+              width: 28,
+              height: 28,
+              borderRadius: 8,
+              border: "2px solid #F7931A",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              flexShrink: 0,
+            }}
           >
-            <path
-              d="M10 2L12.4 7.8L18.5 8.3L14 12.3L15.4 18.3L10 15.1L4.6 18.3L6 12.3L1.5 8.3L7.6 7.8L10 2Z"
-              fill="#F7931A"
-            />
-          </svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="#F7931A">
+              <path
+                d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"
+                stroke="#F7931A"
+                strokeWidth="2"
+                fill="none"
+              />
+            </svg>
+          </span>
           BitRemit
         </Link>
 
-        {/* CTA */}
-        <Link
-          href="/send"
-          className="flex items-center gap-1.5 rounded-lg border-none px-5 py-2.5 text-sm font-medium transition-[opacity,transform] duration-150 hover:opacity-90 hover:-translate-y-px"
-          style={{
-            background: "#F7931A",
-            color: "#0D1117",
-            fontFamily: "var(--font-sans)",
-          }}
-        >
-          Connect Wallet
-        </Link>
+        {isConnected ? (
+          <div className="flex items-center justify-center gap-8">
+            <Link
+              href="/dashboard"
+              className="text-sm font-medium no-underline transition-colors duration-150"
+              style={{ color: "#F0F6FC" }}
+            >
+              Dashboard
+            </Link>
+            <Link
+              href="/send"
+              className="text-sm font-medium no-underline transition-colors duration-150"
+              style={{ color: "#F0F6FC" }}
+            >
+              Send
+            </Link>
+            <Link
+              href="/history"
+              className="text-sm font-medium no-underline transition-colors duration-150"
+              style={{ color: "#F0F6FC" }}
+            >
+              History
+            </Link>
+          </div>
+        ) : (
+          <div />
+        )}
+
+        <div className="justify-self-end">
+          <ConnectButton />
+        </div>
       </div>
     </nav>
   );

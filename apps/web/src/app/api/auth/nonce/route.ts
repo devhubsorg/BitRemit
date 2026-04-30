@@ -1,6 +1,6 @@
 import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
-import { redis } from "@/lib/redis";
+import { saveNonce } from "@/lib/nonceStore";
 
 /**
  * GET /api/auth/nonce
@@ -15,8 +15,15 @@ import { redis } from "@/lib/redis";
 export async function GET(): Promise<NextResponse> {
   const nonce = randomBytes(16).toString("hex");
 
-  // Store nonce with a 5-minute expiry; value "1" is a sentinel
-  await redis.set(`nonce:${nonce}`, "1", { ex: 300 });
+  try {
+    // Store nonce with a 5-minute expiry; value "1" is a sentinel
+    await saveNonce(`nonce:${nonce}`, 300);
+  } catch {
+    return NextResponse.json(
+      { error: "Nonce service unavailable" },
+      { status: 503 },
+    );
+  }
 
   return NextResponse.json({ nonce });
 }

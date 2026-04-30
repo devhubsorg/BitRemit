@@ -34,6 +34,18 @@ export function HeroSection() {
       {/* Background */}
       <div className="pointer-events-none absolute inset-0" aria-hidden="true">
         <div
+          className="absolute inset-0"
+          style={{
+            backgroundImage: "url('/images/flame.png')",
+            backgroundRepeat: "no-repeat",
+            backgroundPosition: "center",
+            backgroundSize: "cover",
+            opacity: 0.22,
+            filter: "saturate(1.15)",
+          }}
+        />
+        {/*
+        <div
           className="absolute"
           style={{
             top: "-20%",
@@ -54,6 +66,7 @@ export function HeroSection() {
               "radial-gradient(ellipse at 40% 50%, black 30%, transparent 70%)",
           }}
         />
+        */}
       </div>
 
       <div
@@ -62,25 +75,6 @@ export function HeroSection() {
       >
         {/* Left column */}
         <div>
-          {/* Label badge */}
-          <div
-            className="mb-7 flex w-fit items-center gap-2 rounded-full border px-3.5 py-1.5 text-xs font-medium uppercase tracking-[0.08em]"
-            style={{
-              background: "rgba(247,147,26,0.12)",
-              borderColor: "rgba(247,147,26,0.25)",
-              color: "#F7931A",
-            }}
-          >
-            <span
-              className="h-1.5 w-1.5 rounded-full"
-              style={{
-                background: "#F7931A",
-                animation: "pulse-dot 2s ease-in-out infinite",
-              }}
-            />
-            Bitcoin-Powered Remittance
-          </div>
-
           {/* Headline */}
           <h1
             className="mb-5 leading-none tracking-tight text-white"
