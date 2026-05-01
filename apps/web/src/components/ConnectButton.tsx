@@ -31,6 +31,8 @@ export function ConnectButton() {
   const pathname = usePathname();
   const wasConnectedRef = useRef(false);
   const authenticatedAddressRef = useRef<string | null>(null);
+  const authInFlightRef = useRef(false);
+  const lastFailedAuthRef = useRef<{ address: string; at: number } | null>(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -43,9 +45,10 @@ export function ConnectButton() {
   const shouldAutoRedirect = () => pathname === "/" || !wasConnectedRef.current;
 
   useEffect(() => {
-    if (!isConnected || !address) {
+    if (!isConnected || !address || !chainId) {
       wasConnectedRef.current = false;
       authenticatedAddressRef.current = null;
+      authInFlightRef.current = false;
       return;
     }
 
@@ -53,6 +56,19 @@ export function ConnectButton() {
 
     const ensureSession = async () => {
       const normalizedAddress = address.toLowerCase();
+      const lastFailed = lastFailedAuthRef.current;
+
+      if (
+        lastFailed &&
+        lastFailed.address === normalizedAddress &&
+        Date.now() - lastFailed.at < 15000
+      ) {
+        return;
+      }
+
+      if (authInFlightRef.current) {
+        return;
+      }
 
       if (authenticatedAddressRef.current === normalizedAddress) {
         if (!cancelled && shouldAutoRedirect()) {
@@ -62,6 +78,7 @@ export function ConnectButton() {
         return;
       }
 
+      authInFlightRef.current = true;
       setIsAuthenticating(true);
 
       try {
@@ -74,6 +91,7 @@ export function ConnectButton() {
           const session = (await sessionResponse.json()) as { address?: string };
           if (session.address?.toLowerCase() === normalizedAddress) {
             authenticatedAddressRef.current = normalizedAddress;
+            lastFailedAuthRef.current = null;
             if (!cancelled && shouldAutoRedirect()) {
               navigateToDashboard();
             }
@@ -120,13 +138,16 @@ export function ConnectButton() {
         }
 
         authenticatedAddressRef.current = normalizedAddress;
+        lastFailedAuthRef.current = null;
 
         if (!cancelled && shouldAutoRedirect()) {
           navigateToDashboard();
         }
       } catch (error) {
+        lastFailedAuthRef.current = { address: normalizedAddress, at: Date.now() };
         console.error("Wallet authentication failed", error);
       } finally {
+        authInFlightRef.current = false;
         if (!cancelled) {
           setIsAuthenticating(false);
         }
@@ -139,7 +160,7 @@ export function ConnectButton() {
     return () => {
       cancelled = true;
     };
-  }, [address, chainId, isConnected, pathname, router, signMessageAsync]);
+  }, [address, chainId, isConnected, router, signMessageAsync]);
 
   // ── Disconnected state ────────────────────────────────────────────────────
   if (!isConnected || !address) {
@@ -200,6 +221,8 @@ export function ConnectButton() {
               });
               disconnect();
               authenticatedAddressRef.current = null;
+              lastFailedAuthRef.current = null;
+              authInFlightRef.current = false;
               setShowDisconnect(false);
             }}
             style={disconnectBtnStyle}

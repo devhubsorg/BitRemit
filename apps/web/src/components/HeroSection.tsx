@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { useAccount } from "wagmi";
 
 const RAILS = [
@@ -13,9 +12,15 @@ const RAILS = [
 
 export function HeroSection() {
   const { isConnected } = useAccount();
-  const { openConnectModal } = useConnectModal();
   const [railIndex, setRailIndex] = useState(0);
   const [visible, setVisible] = useState(true);
+
+  const handleStartSendingClick = () => {
+    const connectTrigger = document.querySelector<HTMLButtonElement>(
+      "button.connect-btn",
+    );
+    connectTrigger?.click();
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -149,7 +154,7 @@ export function HeroSection() {
             ) : (
               <button
                 type="button"
-                onClick={() => openConnectModal?.()}
+                onClick={handleStartSendingClick}
                 className="flex items-center gap-2 rounded-lg border-none px-7 py-3.5 text-sm font-bold tracking-[-0.01em] transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(247,147,26,0.3)]"
                 style={{
                   background: "#F7931A",

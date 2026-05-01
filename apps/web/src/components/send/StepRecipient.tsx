@@ -52,6 +52,7 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
   const [recipients, setRecipients] = useState<RecipientResponse[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [showAddForm, setShowAddForm] = useState(false)
 
   // Add form state
@@ -65,11 +66,70 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
   const formRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
-    fetch('/api/recipients')
-      .then(r => r.json())
-      .then(data => setRecipients(data.recipients ?? data))
-      .catch(() => setRecipients([]))
-      .finally(() => setLoading(false))
+    const waitForSessionReady = async (maxAttempts = 5, delayMs = 500): Promise<boolean> => {
+      for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+        const sessionRes = await fetch('/api/auth/session', {
+          cache: 'no-store',
+          credentials: 'same-origin',
+        })
+
+        if (sessionRes.ok) {
+          return true
+        }
+
+        if (sessionRes.status !== 401) {
+          return false
+        }
+
+        if (attempt < maxAttempts - 1) {
+          await new Promise((resolve) => setTimeout(resolve, delayMs))
+        }
+      }
+
+      return false
+    }
+
+    const loadRecipients = async () => {
+      try {
+        const sessionReady = await waitForSessionReady()
+        if (!sessionReady) {
+          setRecipients([])
+          setLoadError('Session not ready yet. Complete wallet signature and retry.')
+          return
+        }
+
+        const response = await fetch('/api/recipients', {
+          credentials: 'same-origin',
+        })
+
+        if (!response.ok) {
+          setRecipients([])
+          setLoadError(
+            response.status === 401
+              ? 'Session expired. Reconnect wallet and sign again.'
+              : 'Failed to load recipients.'
+          )
+          return
+        }
+
+        const data: unknown = await response.json()
+        const nextRecipients = Array.isArray(data)
+          ? data
+          : Array.isArray((data as { recipients?: unknown }).recipients)
+            ? (data as { recipients: RecipientResponse[] }).recipients
+            : []
+
+        setRecipients(nextRecipients)
+        setLoadError('')
+      } catch {
+        setRecipients([])
+        setLoadError('Failed to load recipients.')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void loadRecipients()
   }, [])
 
   const filtered = recipients.filter(r => {
@@ -92,20 +152,26 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
       const res = await fetch('/api/recipients', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({
           name: newName.trim(),
           phoneNumber: countryCode + newPhone.trim(),
           paymentRail: newRail,
         }),
       })
-      if (!res.ok) throw new Error('Failed to add recipient')
+      if (!res.ok) {
+        if (res.status === 401) {
+          throw new Error('Session expired. Reconnect wallet and sign again.')
+        }
+        throw new Error('Failed to add recipient')
+      }
       const created: RecipientResponse = await res.json()
       setRecipients(prev => [created, ...prev])
       setShowAddForm(false)
       setNewName(''); setNewPhone(''); setNewRail('MPESA')
       handleSelect(created)
-    } catch {
-      setFormError('Failed to add recipient. Please try again.')
+    } catch (error) {
+      setFormError(error instanceof Error ? error.message : 'Failed to add recipient. Please try again.')
     } finally {
       setSubmitting(false)
     }
@@ -155,6 +221,8 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '12px' }}>
         {loading ? (
           <p style={{ color: '#555', fontSize: '14px', padding: '20px 0', textAlign: 'center' }}>Loading…</p>
+        ) : loadError ? (
+          <p style={{ color: '#ef4444', fontSize: '14px', padding: '20px 0', textAlign: 'center' }}>{loadError}</p>
         ) : filtered.length === 0 ? (
           <p style={{ color: '#555', fontSize: '14px', padding: '20px 0', textAlign: 'center' }}>No recipients found.</p>
         ) : (
