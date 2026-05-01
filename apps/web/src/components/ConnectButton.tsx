@@ -40,6 +40,8 @@ export function ConnectButton() {
     }
   };
 
+  const shouldAutoRedirect = () => pathname === "/" || !wasConnectedRef.current;
+
   useEffect(() => {
     if (!isConnected || !address) {
       wasConnectedRef.current = false;
@@ -53,9 +55,10 @@ export function ConnectButton() {
       const normalizedAddress = address.toLowerCase();
 
       if (authenticatedAddressRef.current === normalizedAddress) {
-        if (!cancelled) {
+        if (!cancelled && shouldAutoRedirect()) {
           navigateToDashboard();
         }
+        wasConnectedRef.current = true;
         return;
       }
 
@@ -71,9 +74,10 @@ export function ConnectButton() {
           const session = (await sessionResponse.json()) as { address?: string };
           if (session.address?.toLowerCase() === normalizedAddress) {
             authenticatedAddressRef.current = normalizedAddress;
-            if (!cancelled) {
+            if (!cancelled && shouldAutoRedirect()) {
               navigateToDashboard();
             }
+            wasConnectedRef.current = true;
             return;
           }
         }
@@ -117,7 +121,7 @@ export function ConnectButton() {
 
         authenticatedAddressRef.current = normalizedAddress;
 
-        if (!cancelled) {
+        if (!cancelled && shouldAutoRedirect()) {
           navigateToDashboard();
         }
       } catch (error) {

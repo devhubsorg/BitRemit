@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { useConnectModal } from "@rainbow-me/rainbowkit";
+import { useAccount } from "wagmi";
 
 const RAILS = [
   { label: "M-Pesa", color: "#22C55E" },
@@ -10,6 +12,8 @@ const RAILS = [
 ];
 
 export function HeroSection() {
+  const { isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const [railIndex, setRailIndex] = useState(0);
   const [visible, setVisible] = useState(true);
 
@@ -129,18 +133,35 @@ export function HeroSection() {
 
           {/* CTAs */}
           <div className="flex flex-wrap gap-4">
-            <Link
-              href="/send"
-              className="flex items-center gap-2 rounded-lg border-none px-7 py-3.5 text-sm font-bold tracking-[-0.01em] transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(247,147,26,0.3)]"
-              style={{
-                background: "#F7931A",
-                color: "#0D1117",
-                fontFamily: "var(--font-display)",
-                fontSize: "15px",
-              }}
-            >
-              Start Sending &nbsp;→
-            </Link>
+            {isConnected ? (
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 rounded-lg border-none px-7 py-3.5 text-sm font-bold tracking-[-0.01em] transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(247,147,26,0.3)]"
+                style={{
+                  background: "#F7931A",
+                  color: "#0D1117",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "15px",
+                }}
+              >
+                Start Sending &nbsp;→
+              </Link>
+            ) : (
+              <button
+                type="button"
+                onClick={() => openConnectModal?.()}
+                className="flex items-center gap-2 rounded-lg border-none px-7 py-3.5 text-sm font-bold tracking-[-0.01em] transition-[transform,box-shadow] duration-150 hover:-translate-y-0.5 hover:shadow-[0_8px_24px_rgba(247,147,26,0.3)]"
+                style={{
+                  background: "#F7931A",
+                  color: "#0D1117",
+                  fontFamily: "var(--font-display)",
+                  fontSize: "15px",
+                  cursor: "pointer",
+                }}
+              >
+                Start Sending &nbsp;→
+              </button>
+            )}
             <a
               href="#how-it-works"
               className="rounded-lg border px-7 py-3.5 text-sm font-normal transition-[border-color,color,transform] duration-150 hover:-translate-y-px hover:border-[#F7931A] hover:text-[#F7931A]"

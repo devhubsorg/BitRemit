@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
+import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
 import { ConnectButton } from '@/components/ConnectButton'
@@ -12,7 +13,7 @@ import { useVault, useVaultHealth, useTransactions, useStats } from '@/hooks'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { address } = useAccount()
+  const { status } = useAccount()
   const mounted = useRef(false)
 
   // Route guard — redirect to landing if wallet disconnected after mount
@@ -21,10 +22,10 @@ export default function DashboardPage() {
   }, [])
 
   useEffect(() => {
-    if (mounted.current && !address) {
+    if (mounted.current && status === 'disconnected') {
       router.push('/')
     }
-  }, [address, router])
+  }, [status, router])
 
   // Data hooks
   const vault = useVault()
@@ -127,7 +128,7 @@ export default function DashboardPage() {
               ),
             },
           ].map((item) => (
-            <a
+            <Link
               key={item.href}
               href={item.href}
               style={{
@@ -147,7 +148,7 @@ export default function DashboardPage() {
             >
               <span style={{ color: item.active ? '#000' : '#888' }}>{item.icon}</span>
               {item.label}
-            </a>
+            </Link>
           ))}
         </nav>
       </aside>
@@ -177,7 +178,7 @@ export default function DashboardPage() {
             DASHBOARD
           </span>
 
-          {address && <ConnectButton />}
+          <ConnectButton />
         </div>
 
         {/* Content */}
