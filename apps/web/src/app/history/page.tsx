@@ -32,9 +32,32 @@ const COLUMNS = [
   { label: '', key: 'expand' },
 ]
 
+async function waitForSessionReady(maxAttempts = 5, delayMs = 500): Promise<boolean> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    const res = await fetch('/api/auth/session', {
+      cache: 'no-store',
+      credentials: 'same-origin',
+    })
+
+    if (res.ok) {
+      return true
+    }
+
+    if (res.status !== 401) {
+      return false
+    }
+
+    if (attempt < maxAttempts - 1) {
+      await new Promise((resolve) => setTimeout(resolve, delayMs))
+    }
+  }
+
+  return false
+}
+
 export default function HistoryPage() {
   const router = useRouter()
-  const { isConnected, status } = useAccount()
+  const { status } = useAccount()
   const mounted = useRef(false)
 
   const [filters, setFilters] = useState<HistoryFilters>(INITIAL_FILTERS)
@@ -55,6 +78,11 @@ export default function HistoryPage() {
     setLoading(true)
     setError(null)
     try {
+      const sessionReady = await waitForSessionReady()
+      if (!sessionReady) {
+        throw new Error('Session not ready yet. Complete wallet signature and retry.')
+      }
+
       const qs = buildQueryString({
         page: f.page,
         status: f.status,
@@ -64,7 +92,12 @@ export default function HistoryPage() {
         searchQuery: f.searchQuery,
         limit: 10,
       })
-      const res = await fetch(`/api/transactions${qs}`)
+      const res = await fetch(`/api/transactions${qs}`, {
+        credentials: 'same-origin',
+      })
+      if (res.status === 401) {
+        throw new Error('Session expired. Please reconnect/sign again.')
+      }
       if (!res.ok) throw new Error(`Request failed: ${res.status}`)
       const json: TransactionsResponse = await res.json()
       setData(json)
@@ -76,8 +109,8 @@ export default function HistoryPage() {
   }, [])
 
   useEffect(() => {
-    if (isConnected) fetchTransactions(filters)
-  }, [filters, isConnected, fetchTransactions])
+    if (status === 'connected') fetchTransactions(filters)
+  }, [filters, status, fetchTransactions])
 
   const updateFilters = (partial: Partial<HistoryFilters>) => {
     setFilters((prev) => ({ ...prev, ...partial }))
@@ -94,7 +127,9 @@ export default function HistoryPage() {
         searchQuery: filters.searchQuery,
         limit: 9999,
       })
-      const res = await fetch(`/api/transactions${qs}`)
+      const res = await fetch(`/api/transactions${qs}`, {
+        credentials: 'same-origin',
+      })
       if (!res.ok) throw new Error('Export failed')
       const json: TransactionsResponse = await res.json()
       exportToCSV(json.transactions)
