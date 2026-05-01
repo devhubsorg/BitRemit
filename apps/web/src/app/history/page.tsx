@@ -32,7 +32,9 @@ const COLUMNS = [
   { label: '', key: 'expand' },
 ]
 
-async function waitForSessionReady(maxAttempts = 5, delayMs = 500): Promise<boolean> {
+type SessionReadyResult = 'ready' | 'unauthorized' | 'forbidden' | 'error'
+
+async function waitForSessionReady(maxAttempts = 5, delayMs = 500): Promise<SessionReadyResult> {
   for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
     const res = await fetch('/api/auth/session', {
       cache: 'no-store',
@@ -40,11 +42,15 @@ async function waitForSessionReady(maxAttempts = 5, delayMs = 500): Promise<bool
     })
 
     if (res.ok) {
-      return true
+      return 'ready'
+    }
+
+    if (res.status === 403) {
+      return 'forbidden'
     }
 
     if (res.status !== 401) {
-      return false
+      return 'error'
     }
 
     if (attempt < maxAttempts - 1) {
@@ -52,17 +58,17 @@ async function waitForSessionReady(maxAttempts = 5, delayMs = 500): Promise<bool
     }
   }
 
-  return false
+  return 'unauthorized'
 }
 
-  const SESSION_RETRY_LIMIT = 10
+const SESSION_RETRY_LIMIT = 10
 
 export default function HistoryPage() {
   const router = useRouter()
   const { status } = useAccount()
   const mounted = useRef(false)
-    const sessionRetryRef = useRef(0)
-    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const sessionRetryRef = useRef(0)
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [filters, setFilters] = useState<HistoryFilters>(INITIAL_FILTERS)
   const [data, setData] = useState<TransactionsResponse | null>(null)
@@ -72,39 +78,53 @@ export default function HistoryPage() {
 
   useEffect(() => {
     mounted.current = true
-  }, [status])
+  }, [])
 
   useEffect(() => {
     if (mounted.current && status === 'disconnected') router.push('/')
   }, [status, router])
 
-    useEffect(() => {
-      return () => {
-        if (retryTimerRef.current) {
-          clearTimeout(retryTimerRef.current)
-        }
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) {
+        clearTimeout(retryTimerRef.current)
       }
-    }, [])
+    }
+  }, [])
 
   const fetchTransactions = useCallback(async (f: HistoryFilters) => {
     setLoading(true)
     setError(null)
     try {
-        const sessionReady = await waitForSessionReady(6, 500)
-      if (!sessionReady) {
+      const sessionState = await waitForSessionReady(6, 500)
+      if (sessionState !== 'ready') {
+        if (sessionState === 'forbidden') {
+          throw new Error('Access blocked by Vercel Security Checkpoint. Complete the checkpoint and reload.')
+        }
+
+        if (sessionState === 'unauthorized') {
           if (status === 'connected' && sessionRetryRef.current < SESSION_RETRY_LIMIT) {
             sessionRetryRef.current += 1
             setError('Finalizing wallet session...')
             setLoading(false)
+
+            if (retryTimerRef.current) {
+              clearTimeout(retryTimerRef.current)
+            }
+
             retryTimerRef.current = setTimeout(() => {
               void fetchTransactions(f)
             }, 1200)
             return
           }
-          throw new Error('Unable to establish wallet session. Please disconnect and reconnect.')
+
+          throw new Error('Wallet is connected but sign-in was not completed. Click Connect Wallet and approve the signature, then Retry.')
+        }
+
+        throw new Error('Unable to verify wallet session right now. Please retry in a moment.')
       }
 
-        sessionRetryRef.current = 0
+      sessionRetryRef.current = 0
 
       const qs = buildQueryString({
         page: f.page,
@@ -119,7 +139,7 @@ export default function HistoryPage() {
         credentials: 'same-origin',
       })
       if (res.status === 401) {
-        throw new Error('Session expired. Please reconnect/sign again.')
+        throw new Error('Wallet session missing. Click Connect Wallet and approve signature, then Retry.')
       }
       if (!res.ok) throw new Error(`Request failed: ${res.status}`)
       const json: TransactionsResponse = await res.json()

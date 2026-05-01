@@ -32,7 +32,9 @@ export function ConnectButton() {
   const wasConnectedRef = useRef(false);
   const authenticatedAddressRef = useRef<string | null>(null);
   const authInFlightRef = useRef(false);
-  const lastFailedAuthRef = useRef<{ address: string; at: number } | null>(null);
+  const lastFailedAuthRef = useRef<
+    { address: string; at: number; cooldownMs?: number } | null
+  >(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -123,7 +125,7 @@ export function ConnectButton() {
       if (
         lastFailed &&
         lastFailed.address === normalizedAddress &&
-        Date.now() - lastFailed.at < 15000
+        Date.now() - lastFailed.at < (lastFailed.cooldownMs ?? 15000)
       ) {
         return;
       }
@@ -148,6 +150,10 @@ export function ConnectButton() {
           cache: "no-store",
           credentials: "same-origin",
         });
+
+        if (sessionResponse.status === 403) {
+          throw new Error("Access blocked by Vercel Security Checkpoint");
+        }
 
         if (sessionResponse.ok) {
           const session = (await sessionResponse.json()) as { address?: string };
@@ -192,7 +198,15 @@ export function ConnectButton() {
           navigateToDashboard();
         }
       } catch (error) {
-        lastFailedAuthRef.current = { address: normalizedAddress, at: Date.now() };
+        const message =
+          error instanceof Error ? error.message : "Wallet authentication failed";
+        const blockedByCheckpoint = /security checkpoint|forbidden/i.test(message);
+
+        lastFailedAuthRef.current = {
+          address: normalizedAddress,
+          at: Date.now(),
+          cooldownMs: blockedByCheckpoint ? 5 * 60 * 1000 : 15000,
+        };
         console.error("Wallet authentication failed", error);
       } finally {
         authInFlightRef.current = false;
