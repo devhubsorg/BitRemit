@@ -1,6 +1,7 @@
 import { SignJWT } from "jose";
 import { SiweMessage } from "siwe";
 import { NextResponse } from "next/server";
+import { createPublicClient, http, isAddress, type Address } from "viem";
 import prisma from "@bitremit/database";
 import { SESSION_COOKIE_NAME } from "web3";
 import { getJwtSecret } from "@/lib/jwt";
@@ -10,6 +11,9 @@ const SECP256K1_N = BigInt(
   "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
 );
 const SECP256K1_HALF_N = SECP256K1_N / BigInt(2);
+const publicClient = createPublicClient({
+  transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
+});
 
 function normalizeLowSSignature(signature: string): string {
   if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
@@ -39,6 +43,50 @@ function normalizeLowSSignature(signature: string): string {
   const normalizedVHex = v.toString(16).padStart(2, "0");
 
   return `0x${rHex}${normalizedSHex}${normalizedVHex}`;
+}
+
+async function verifySignatureWithFallback(
+  siweMessage: SiweMessage,
+  message: string,
+  signature: string,
+): Promise<boolean> {
+  const normalizedSignature = normalizeLowSSignature(signature);
+
+  try {
+    const verifyResult = await siweMessage.verify({ signature });
+    if (verifyResult.success) {
+      return true;
+    }
+  } catch {
+    // Fall through to normalized/plain client-backed verification.
+  }
+
+  if (normalizedSignature !== signature) {
+    try {
+      const verifyResult = await siweMessage.verify({
+        signature: normalizedSignature,
+      });
+      if (verifyResult.success) {
+        return true;
+      }
+    } catch {
+      // Fall through to client-backed verification.
+    }
+  }
+
+  if (!isAddress(siweMessage.address)) {
+    return false;
+  }
+
+  try {
+    return await publicClient.verifyMessage({
+      address: siweMessage.address as Address,
+      message,
+      signature: normalizedSignature as `0x${string}`,
+    });
+  } catch {
+    return false;
+  }
 }
 
 /**
@@ -78,31 +126,15 @@ export async function POST(request: Request): Promise<NextResponse> {
   // Parse and verify the SIWE message + signature
   const siweMessage = new SiweMessage(message);
 
-  let verifyResult: Awaited<ReturnType<SiweMessage["verify"]>>;
-  const normalizedSignature = normalizeLowSSignature(signature);
-  try {
-    verifyResult = await siweMessage.verify({ signature });
-  } catch {
-    if (normalizedSignature === signature) {
-      return NextResponse.json(
-        { error: "Signature verification failed" },
-        { status: 401 },
-      );
-    }
+  const signatureValid = await verifySignatureWithFallback(
+    siweMessage,
+    message,
+    signature,
+  );
 
-    try {
-      verifyResult = await siweMessage.verify({ signature: normalizedSignature });
-    } catch {
-      return NextResponse.json(
-        { error: "Signature verification failed" },
-        { status: 401 },
-      );
-    }
-  }
-
-  if (!verifyResult.success) {
+  if (!signatureValid) {
     return NextResponse.json(
-      { error: "Invalid SIWE signature" },
+      { error: "Signature verification failed" },
       { status: 401 },
     );
   }
