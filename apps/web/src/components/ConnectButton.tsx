@@ -36,6 +36,68 @@ export function ConnectButton() {
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
+  const buildSiweMessage = (walletAddress: string, nonce: string): string =>
+    new SiweMessage({
+      domain: window.location.host,
+      address: walletAddress,
+      statement: "Sign in to BitRemit",
+      uri: window.location.origin,
+      version: "1",
+      chainId,
+      nonce,
+    }).prepareMessage();
+
+  const requestNonce = async (): Promise<string> => {
+    const nonceResponse = await fetch("/api/auth/nonce", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+
+    if (!nonceResponse.ok) {
+      throw new Error("Failed to create auth nonce");
+    }
+
+    const { nonce } = (await nonceResponse.json()) as { nonce?: string };
+    if (!nonce) {
+      throw new Error("Missing auth nonce");
+    }
+
+    return nonce;
+  };
+
+  const verifySession = async (message: string, signature: string): Promise<void> => {
+    const verifyResponse = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ message, signature }),
+    });
+
+    if (verifyResponse.ok) {
+      return;
+    }
+
+    let errorDetail = "Failed to verify wallet session";
+    try {
+      const payload = (await verifyResponse.json()) as { error?: string };
+      if (payload.error) {
+        errorDetail = payload.error;
+      }
+    } catch {
+      // Preserve fallback message when response body is not JSON.
+    }
+
+    const error = new Error(errorDetail) as Error & {
+      status?: number;
+      code?: string;
+    };
+    error.status = verifyResponse.status;
+    error.code = errorDetail;
+    throw error;
+  };
+
   const navigateToDashboard = () => {
     if (pathname !== "/dashboard") {
       router.replace("/dashboard");
@@ -100,41 +162,27 @@ export function ConnectButton() {
           }
         }
 
-        const nonceResponse = await fetch("/api/auth/nonce", {
-          cache: "no-store",
-          credentials: "same-origin",
-        });
-        if (!nonceResponse.ok) {
-          throw new Error("Failed to create auth nonce");
-        }
-
-        const { nonce } = (await nonceResponse.json()) as { nonce?: string };
-        if (!nonce) {
-          throw new Error("Missing auth nonce");
-        }
-
-        const message = new SiweMessage({
-          domain: window.location.host,
-          address,
-          statement: "Sign in to BitRemit",
-          uri: window.location.origin,
-          version: "1",
-          chainId,
-          nonce,
-        }).prepareMessage();
-
+        const nonce = await requestNonce();
+        const message = buildSiweMessage(address, nonce);
         const signature = await signMessageAsync({ message });
-        const verifyResponse = await fetch("/api/auth/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "same-origin",
-          body: JSON.stringify({ message, signature }),
-        });
 
-        if (!verifyResponse.ok) {
-          throw new Error("Failed to verify wallet session");
+        try {
+          await verifySession(message, signature);
+        } catch (error) {
+          const authError = error as Error & { code?: string };
+          const nonceInvalid =
+            authError.code === "Nonce expired or already used" ||
+            authError.message === "Nonce expired or already used";
+
+          if (!nonceInvalid) {
+            throw error;
+          }
+
+          // One-time recovery for race/expiry: fetch a fresh nonce and re-sign.
+          const retryNonce = await requestNonce();
+          const retryMessage = buildSiweMessage(address, retryNonce);
+          const retrySignature = await signMessageAsync({ message: retryMessage });
+          await verifySession(retryMessage, retrySignature);
         }
 
         authenticatedAddressRef.current = normalizedAddress;
