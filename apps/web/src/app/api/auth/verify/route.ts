@@ -128,34 +128,42 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  // Find or create the user record
-  const user = await prisma.user.upsert({
-    where: { address },
-    update: {},
-    create: { address },
-    select: { id: true, address: true },
-  });
+  try {
+    // Find or create the user record
+    const user = await prisma.user.upsert({
+      where: { address },
+      update: {},
+      create: { address },
+      select: { id: true, address: true },
+    });
 
-  // Issue a signed JWT (7-day expiry)
-  const secret = getJwtSecret();
-  const token = await new SignJWT({ address: user.address, sub: user.id })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(secret);
+    // Issue a signed JWT (7-day expiry)
+    const secret = getJwtSecret();
+    const token = await new SignJWT({ address: user.address, sub: user.id })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("7d")
+      .sign(secret);
 
-  const response = NextResponse.json({ token, address: user.address });
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+    const response = NextResponse.json({ token, address: user.address });
+    response.cookies.set({
+      name: SESSION_COOKIE_NAME,
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
 
-  return response;
+    return response;
+  } catch (error) {
+    console.error("[auth/verify] Failed to issue session", error);
+    return NextResponse.json(
+      { error: "Failed to issue wallet session" },
+      { status: 500 },
+    );
+  }
 }
 
 export const dynamic = "force-dynamic";
