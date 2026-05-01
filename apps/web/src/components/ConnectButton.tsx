@@ -31,8 +31,74 @@ export function ConnectButton() {
   const pathname = usePathname();
   const wasConnectedRef = useRef(false);
   const authenticatedAddressRef = useRef<string | null>(null);
+  const authInFlightRef = useRef(false);
+  const lastFailedAuthRef = useRef<
+    { address: string; at: number; cooldownMs?: number } | null
+  >(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  const buildSiweMessage = (walletAddress: string, nonce: string): string =>
+    new SiweMessage({
+      domain: window.location.host,
+      address: walletAddress,
+      statement: "Sign in to BitRemit",
+      uri: window.location.origin,
+      version: "1",
+      chainId,
+      nonce,
+    }).prepareMessage();
+
+  const requestNonce = async (): Promise<string> => {
+    const nonceResponse = await fetch("/api/auth/nonce", {
+      cache: "no-store",
+      credentials: "same-origin",
+    });
+
+    if (!nonceResponse.ok) {
+      throw new Error("Failed to create auth nonce");
+    }
+
+    const { nonce } = (await nonceResponse.json()) as { nonce?: string };
+    if (!nonce) {
+      throw new Error("Missing auth nonce");
+    }
+
+    return nonce;
+  };
+
+  const verifySession = async (message: string, signature: string): Promise<void> => {
+    const verifyResponse = await fetch("/api/auth/verify", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "same-origin",
+      body: JSON.stringify({ message, signature }),
+    });
+
+    if (verifyResponse.ok) {
+      return;
+    }
+
+    let errorDetail = "Failed to verify wallet session";
+    try {
+      const payload = (await verifyResponse.json()) as { error?: string };
+      if (payload.error) {
+        errorDetail = payload.error;
+      }
+    } catch {
+      // Preserve fallback message when response body is not JSON.
+    }
+
+    const error = new Error(errorDetail) as Error & {
+      status?: number;
+      code?: string;
+    };
+    error.status = verifyResponse.status;
+    error.code = errorDetail;
+    throw error;
+  };
 
   const navigateToDashboard = () => {
     if (pathname !== "/dashboard") {
@@ -40,10 +106,13 @@ export function ConnectButton() {
     }
   };
 
+  const shouldAutoRedirect = () => pathname === "/" || !wasConnectedRef.current;
+
   useEffect(() => {
-    if (!isConnected || !address) {
+    if (!isConnected || !address || !chainId) {
       wasConnectedRef.current = false;
       authenticatedAddressRef.current = null;
+      authInFlightRef.current = false;
       return;
     }
 
@@ -51,14 +120,29 @@ export function ConnectButton() {
 
     const ensureSession = async () => {
       const normalizedAddress = address.toLowerCase();
+      const lastFailed = lastFailedAuthRef.current;
 
-      if (authenticatedAddressRef.current === normalizedAddress) {
-        if (!cancelled) {
-          navigateToDashboard();
-        }
+      if (
+        lastFailed &&
+        lastFailed.address === normalizedAddress &&
+        Date.now() - lastFailed.at < (lastFailed.cooldownMs ?? 15000)
+      ) {
         return;
       }
 
+      if (authInFlightRef.current) {
+        return;
+      }
+
+      if (authenticatedAddressRef.current === normalizedAddress) {
+        if (!cancelled && shouldAutoRedirect()) {
+          navigateToDashboard();
+        }
+        wasConnectedRef.current = true;
+        return;
+      }
+
+      authInFlightRef.current = true;
       setIsAuthenticating(true);
 
       try {
@@ -67,62 +151,65 @@ export function ConnectButton() {
           credentials: "same-origin",
         });
 
+        if (sessionResponse.status === 403) {
+          throw new Error("Access blocked by Vercel Security Checkpoint");
+        }
+
         if (sessionResponse.ok) {
           const session = (await sessionResponse.json()) as { address?: string };
           if (session.address?.toLowerCase() === normalizedAddress) {
             authenticatedAddressRef.current = normalizedAddress;
-            if (!cancelled) {
+            lastFailedAuthRef.current = null;
+            if (!cancelled && shouldAutoRedirect()) {
               navigateToDashboard();
             }
+            wasConnectedRef.current = true;
             return;
           }
         }
 
-        const nonceResponse = await fetch("/api/auth/nonce", {
-          cache: "no-store",
-          credentials: "same-origin",
-        });
-        if (!nonceResponse.ok) {
-          throw new Error("Failed to create auth nonce");
-        }
-
-        const { nonce } = (await nonceResponse.json()) as { nonce?: string };
-        if (!nonce) {
-          throw new Error("Missing auth nonce");
-        }
-
-        const message = new SiweMessage({
-          domain: window.location.host,
-          address,
-          statement: "Sign in to BitRemit",
-          uri: window.location.origin,
-          version: "1",
-          chainId,
-          nonce,
-        }).prepareMessage();
-
+        const nonce = await requestNonce();
+        const message = buildSiweMessage(address, nonce);
         const signature = await signMessageAsync({ message });
-        const verifyResponse = await fetch("/api/auth/verify", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          credentials: "same-origin",
-          body: JSON.stringify({ message, signature }),
-        });
 
-        if (!verifyResponse.ok) {
-          throw new Error("Failed to verify wallet session");
+        try {
+          await verifySession(message, signature);
+        } catch (error) {
+          const authError = error as Error & { code?: string };
+          const nonceInvalid =
+            authError.code === "Nonce expired or already used" ||
+            authError.message === "Nonce expired or already used";
+
+          if (!nonceInvalid) {
+            throw error;
+          }
+
+          // One-time recovery for race/expiry: fetch a fresh nonce and re-sign.
+          const retryNonce = await requestNonce();
+          const retryMessage = buildSiweMessage(address, retryNonce);
+          const retrySignature = await signMessageAsync({ message: retryMessage });
+          await verifySession(retryMessage, retrySignature);
         }
 
         authenticatedAddressRef.current = normalizedAddress;
+        lastFailedAuthRef.current = null;
 
-        if (!cancelled) {
+        if (!cancelled && shouldAutoRedirect()) {
           navigateToDashboard();
         }
       } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Wallet authentication failed";
+        const blockedByCheckpoint = /security checkpoint|forbidden/i.test(message);
+
+        lastFailedAuthRef.current = {
+          address: normalizedAddress,
+          at: Date.now(),
+          cooldownMs: blockedByCheckpoint ? 5 * 60 * 1000 : 15000,
+        };
         console.error("Wallet authentication failed", error);
       } finally {
+        authInFlightRef.current = false;
         if (!cancelled) {
           setIsAuthenticating(false);
         }
@@ -135,7 +222,7 @@ export function ConnectButton() {
     return () => {
       cancelled = true;
     };
-  }, [address, chainId, isConnected, pathname, router, signMessageAsync]);
+  }, [address, chainId, isConnected, router, signMessageAsync]);
 
   // ── Disconnected state ────────────────────────────────────────────────────
   if (!isConnected || !address) {
@@ -196,6 +283,8 @@ export function ConnectButton() {
               });
               disconnect();
               authenticatedAddressRef.current = null;
+              lastFailedAuthRef.current = null;
+              authInFlightRef.current = false;
               setShowDisconnect(false);
             }}
             style={disconnectBtnStyle}

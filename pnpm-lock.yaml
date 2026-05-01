@@ -100,6 +100,9 @@ importers:
       ethers:
         specifier: ^6.16.0
         version: 6.16.0(bufferutil@4.1.0)(utf-8-validate@5.0.10)
+      framer-motion:
+        specifier: ^12.38.0
+        version: 12.38.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       jose:
         specifier: ^6.2.2
         version: 6.2.2

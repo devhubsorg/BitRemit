@@ -42,6 +42,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html
       lang="en"
       suppressHydrationWarning
+      data-scroll-behavior="smooth"
       className={`${syne.variable} ${dmSans.variable}`}
     >
       {/*

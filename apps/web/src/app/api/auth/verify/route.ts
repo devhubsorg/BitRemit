@@ -1,6 +1,13 @@
 import { SignJWT } from "jose";
 import { SiweMessage } from "siwe";
 import { NextResponse } from "next/server";
+import {
+  createPublicClient,
+  http,
+  isAddress,
+  type Address,
+  type Chain,
+} from "viem";
 import prisma from "@bitremit/database";
 import { SESSION_COOKIE_NAME } from "web3";
 import { getJwtSecret } from "@/lib/jwt";
@@ -10,6 +17,20 @@ const SECP256K1_N = BigInt(
   "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
 );
 const SECP256K1_HALF_N = SECP256K1_N / BigInt(2);
+const MEZO_TESTNET = {
+  id: 31611,
+  name: "Mezo Testnet",
+  nativeCurrency: { name: "BTC", symbol: "BTC", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://rpc.test.mezo.org"] },
+  },
+  testnet: true,
+} as const satisfies Chain;
+
+const publicClient = createPublicClient({
+  chain: MEZO_TESTNET,
+  transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
+});
 
 function normalizeLowSSignature(signature: string): string {
   if (!/^0x[0-9a-fA-F]{130}$/.test(signature)) {
@@ -39,6 +60,70 @@ function normalizeLowSSignature(signature: string): string {
   const normalizedVHex = v.toString(16).padStart(2, "0");
 
   return `0x${rHex}${normalizedSHex}${normalizedVHex}`;
+}
+
+async function verifySignatureWithFallback(
+  siweMessage: SiweMessage,
+  message: string,
+  signature: string,
+): Promise<{ ok: boolean; reason?: string }> {
+  const normalizedSignature = normalizeLowSSignature(signature);
+
+  try {
+    const verifyResult = await siweMessage.verify({ signature });
+    if (verifyResult.success) {
+      return { ok: true };
+    }
+  } catch {
+    // Fall through to normalized/plain client-backed verification.
+  }
+
+  if (normalizedSignature !== signature) {
+    try {
+      const verifyResult = await siweMessage.verify({
+        signature: normalizedSignature,
+      });
+      if (verifyResult.success) {
+        return { ok: true };
+      }
+    } catch {
+      // Fall through to client-backed verification.
+    }
+  }
+
+  if (!isAddress(siweMessage.address)) {
+    return {
+      ok: false,
+      reason:
+        "Unsupported wallet address for SIWE. Use an EVM wallet (0x...) to sign in.",
+    };
+  }
+
+  try {
+    const originalVerified = await publicClient.verifyMessage({
+      address: siweMessage.address as Address,
+      message,
+      signature: signature as `0x${string}`,
+    });
+
+    if (originalVerified) {
+      return { ok: true };
+    }
+
+    const normalizedVerified = await publicClient.verifyMessage({
+      address: siweMessage.address as Address,
+      message,
+      signature: normalizedSignature as `0x${string}`,
+    });
+
+    if (normalizedVerified) {
+      return { ok: true };
+    }
+
+    return { ok: false, reason: "Signature verification failed" };
+  } catch {
+    return { ok: false, reason: "Signature verification failed" };
+  }
 }
 
 /**
@@ -78,31 +163,15 @@ export async function POST(request: Request): Promise<NextResponse> {
   // Parse and verify the SIWE message + signature
   const siweMessage = new SiweMessage(message);
 
-  let verifyResult: Awaited<ReturnType<SiweMessage["verify"]>>;
-  const normalizedSignature = normalizeLowSSignature(signature);
-  try {
-    verifyResult = await siweMessage.verify({ signature });
-  } catch {
-    if (normalizedSignature === signature) {
-      return NextResponse.json(
-        { error: "Signature verification failed" },
-        { status: 401 },
-      );
-    }
+  const signatureResult = await verifySignatureWithFallback(
+    siweMessage,
+    message,
+    signature,
+  );
 
-    try {
-      verifyResult = await siweMessage.verify({ signature: normalizedSignature });
-    } catch {
-      return NextResponse.json(
-        { error: "Signature verification failed" },
-        { status: 401 },
-      );
-    }
-  }
-
-  if (!verifyResult.success) {
+  if (!signatureResult.ok) {
     return NextResponse.json(
-      { error: "Invalid SIWE signature" },
+      { error: signatureResult.reason ?? "Signature verification failed" },
       { status: 401 },
     );
   }
@@ -128,34 +197,42 @@ export async function POST(request: Request): Promise<NextResponse> {
     );
   }
 
-  // Find or create the user record
-  const user = await prisma.user.upsert({
-    where: { address },
-    update: {},
-    create: { address },
-    select: { id: true, address: true },
-  });
+  try {
+    // Find or create the user record
+    const user = await prisma.user.upsert({
+      where: { address },
+      update: {},
+      create: { address },
+      select: { id: true, address: true },
+    });
 
-  // Issue a signed JWT (7-day expiry)
-  const secret = getJwtSecret();
-  const token = await new SignJWT({ address: user.address, sub: user.id })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(secret);
+    // Issue a signed JWT (7-day expiry)
+    const secret = getJwtSecret();
+    const token = await new SignJWT({ address: user.address, sub: user.id })
+      .setProtectedHeader({ alg: "HS256" })
+      .setIssuedAt()
+      .setExpirationTime("7d")
+      .sign(secret);
 
-  const response = NextResponse.json({ token, address: user.address });
-  response.cookies.set({
-    name: SESSION_COOKIE_NAME,
-    value: token,
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    path: "/",
-    maxAge: 60 * 60 * 24 * 7,
-  });
+    const response = NextResponse.json({ token, address: user.address });
+    response.cookies.set({
+      name: SESSION_COOKIE_NAME,
+      value: token,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 60 * 60 * 24 * 7,
+    });
 
-  return response;
+    return response;
+  } catch (error) {
+    console.error("[auth/verify] Failed to issue session", error);
+    return NextResponse.json(
+      { error: "Failed to issue wallet session" },
+      { status: 500 },
+    );
+  }
 }
 
 export const dynamic = "force-dynamic";
