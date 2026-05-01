@@ -1,7 +1,13 @@
 import { SignJWT } from "jose";
 import { SiweMessage } from "siwe";
 import { NextResponse } from "next/server";
-import { createPublicClient, http, isAddress, type Address } from "viem";
+import {
+  createPublicClient,
+  http,
+  isAddress,
+  type Address,
+  type Chain,
+} from "viem";
 import prisma from "@bitremit/database";
 import { SESSION_COOKIE_NAME } from "web3";
 import { getJwtSecret } from "@/lib/jwt";
@@ -11,7 +17,18 @@ const SECP256K1_N = BigInt(
   "0xfffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141",
 );
 const SECP256K1_HALF_N = SECP256K1_N / BigInt(2);
+const MEZO_TESTNET = {
+  id: 31611,
+  name: "Mezo Testnet",
+  nativeCurrency: { name: "BTC", symbol: "BTC", decimals: 18 },
+  rpcUrls: {
+    default: { http: ["https://rpc.test.mezo.org"] },
+  },
+  testnet: true,
+} as const satisfies Chain;
+
 const publicClient = createPublicClient({
+  chain: MEZO_TESTNET,
   transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
 });
 
@@ -49,13 +66,13 @@ async function verifySignatureWithFallback(
   siweMessage: SiweMessage,
   message: string,
   signature: string,
-): Promise<boolean> {
+): Promise<{ ok: boolean; reason?: string }> {
   const normalizedSignature = normalizeLowSSignature(signature);
 
   try {
     const verifyResult = await siweMessage.verify({ signature });
     if (verifyResult.success) {
-      return true;
+      return { ok: true };
     }
   } catch {
     // Fall through to normalized/plain client-backed verification.
@@ -67,7 +84,7 @@ async function verifySignatureWithFallback(
         signature: normalizedSignature,
       });
       if (verifyResult.success) {
-        return true;
+        return { ok: true };
       }
     } catch {
       // Fall through to client-backed verification.
@@ -75,17 +92,37 @@ async function verifySignatureWithFallback(
   }
 
   if (!isAddress(siweMessage.address)) {
-    return false;
+    return {
+      ok: false,
+      reason:
+        "Unsupported wallet address for SIWE. Use an EVM wallet (0x...) to sign in.",
+    };
   }
 
   try {
-    return await publicClient.verifyMessage({
+    const originalVerified = await publicClient.verifyMessage({
+      address: siweMessage.address as Address,
+      message,
+      signature: signature as `0x${string}`,
+    });
+
+    if (originalVerified) {
+      return { ok: true };
+    }
+
+    const normalizedVerified = await publicClient.verifyMessage({
       address: siweMessage.address as Address,
       message,
       signature: normalizedSignature as `0x${string}`,
     });
+
+    if (normalizedVerified) {
+      return { ok: true };
+    }
+
+    return { ok: false, reason: "Signature verification failed" };
   } catch {
-    return false;
+    return { ok: false, reason: "Signature verification failed" };
   }
 }
 
@@ -126,15 +163,15 @@ export async function POST(request: Request): Promise<NextResponse> {
   // Parse and verify the SIWE message + signature
   const siweMessage = new SiweMessage(message);
 
-  const signatureValid = await verifySignatureWithFallback(
+  const signatureResult = await verifySignatureWithFallback(
     siweMessage,
     message,
     signature,
   );
 
-  if (!signatureValid) {
+  if (!signatureResult.ok) {
     return NextResponse.json(
-      { error: "Signature verification failed" },
+      { error: signatureResult.reason ?? "Signature verification failed" },
       { status: 401 },
     );
   }
