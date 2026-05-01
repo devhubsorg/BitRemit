@@ -1,97 +1,82 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { z } from "zod";
 import { requireAuth } from "web3";
 import prisma from "@bitremit/database";
 
-// ---------------------------------------------------------------------------
-// Query-param schema
-// All params are optional — defaults applied below.
-// ---------------------------------------------------------------------------
+export interface TransactionsQuery {
+  page: number;
+  limit: number;
+  status: string;
+  railType: string;
+  startDate: string;
+  endDate: string;
+  searchQuery: string;
+}
 
-const TxStatusValues = [
-  "PENDING",
-  "CONFIRMED_ONCHAIN",
-  "OFFRAMP_PROCESSING",
-  "COMPLETED",
-  "FAILED",
-] as const;
+export function parseTransactionsQuery(searchParams: URLSearchParams): TransactionsQuery {
+  return {
+    page: Math.max(1, parseInt(searchParams.get("page") ?? "1")),
+    limit: Math.min(100, parseInt(searchParams.get("limit") ?? "10")),
+    status: searchParams.get("status") ?? "",
+    railType: searchParams.get("railType") ?? "",
+    startDate: searchParams.get("startDate") ?? "",
+    endDate: searchParams.get("endDate") ?? "",
+    searchQuery: searchParams.get("searchQuery") ?? "",
+  };
+}
 
-const RailTypeValues = ["MPESA", "GCASH", "MTNMOMO"] as const;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function buildTransactionsWhere(userId: string, query: TransactionsQuery): Record<string, any> {
+  const { status, railType, startDate, endDate, searchQuery } = query;
+  return {
+    senderId: userId,
+    ...(status && status !== "ALL" ? { status } : {}),
+    ...(railType && railType !== "ALL" ? { railType } : {}),
+    ...(startDate || endDate
+      ? {
+          createdAt: {
+            ...(startDate ? { gte: new Date(startDate) } : {}),
+            ...(endDate
+              ? { lte: new Date(new Date(endDate).setHours(23, 59, 59)) }
+              : {}),
+          },
+        }
+      : {}),
+    ...(searchQuery
+      ? {
+          recipient: {
+            name: { contains: searchQuery, mode: "insensitive" },
+          },
+        }
+      : {}),
+  };
+}
 
-const querySchema = z.object({
-  page: z.coerce.number().int().min(1).default(1),
-  limit: z.coerce.number().int().min(1).max(100).default(20),
-  status: z.enum(TxStatusValues).optional(),
-  railType: z.enum(RailTypeValues).optional(),
-  // ISO-8601 date strings — e.g. "2025-01-01" or "2025-01-01T00:00:00Z"
-  startDate: z.string().datetime({ offset: true }).optional(),
-  endDate: z.string().datetime({ offset: true }).optional(),
-});
-
-// ---------------------------------------------------------------------------
-// GET /api/transactions
-//
-// Returns a paginated list of all transactions sent by the authenticated user,
-// with the linked Recipient record joined.
-//
-// Query params:
-//   page       — page number (default 1)
-//   limit      — items per page (default 20, max 100)
-//   status     — filter by TxStatus enum value
-//   railType   — filter by PaymentRail enum value
-//   startDate  — inclusive lower bound on createdAt (ISO-8601)
-//   endDate    — exclusive upper bound on createdAt (ISO-8601)
-//
-// Response: { transactions, total, page, totalPages }
-// ---------------------------------------------------------------------------
+export function buildRecipientInitials(name: string): string {
+  return name
+    .split(" ")
+    .map((p: string) => p[0])
+    .slice(0, 2)
+    .join("");
+}
 
 export async function GET(request: NextRequest) {
-  // ── Auth ────────────────────────────────────────────────────────────────
   const auth = await requireAuth(request);
   if (auth instanceof Response) return auth;
   const { userId } = auth;
 
-  // ── Parse query params ───────────────────────────────────────────────────
-  const rawParams = Object.fromEntries(request.nextUrl.searchParams.entries());
-  const parsed = querySchema.safeParse(rawParams);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Invalid query parameters", details: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
+  const { searchParams } = new URL(request.url);
 
-  const { page, limit, status, railType, startDate, endDate } = parsed.data;
+  const query = parseTransactionsQuery(searchParams);
+  const { page, limit } = query;
+  const where = buildTransactionsWhere(userId, query);
 
-  // ── Build where clause ───────────────────────────────────────────────────
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const where: Record<string, any> = {
-    senderId: userId,
-  };
-
-  if (status) {
-    where.status = status;
-  }
-
-  if (railType) {
-    where.railType = railType;
-  }
-
-  if (startDate || endDate) {
-    where.createdAt = {
-      ...(startDate ? { gte: new Date(startDate) } : {}),
-      ...(endDate ? { lt: new Date(endDate) } : {}),
-    };
-  }
-
-  // ── Paginated query ──────────────────────────────────────────────────────
   const skip = (page - 1) * limit;
 
   const [transactions, total] = await Promise.all([
     prisma.transaction.findMany({
       where,
       include: {
-        recipient: true,
+        recipient: { select: { name: true, phoneNumber: true } },
       },
       orderBy: { createdAt: "desc" },
       skip,
@@ -100,32 +85,54 @@ export async function GET(request: NextRequest) {
     prisma.transaction.count({ where }),
   ]);
 
-  const totalPages = Math.ceil(total / limit);
-  const normalizedTransactions = transactions.map((transaction) => ({
-    id: transaction.id,
+  const monthStart = new Date();
+  monthStart.setDate(1);
+  monthStart.setHours(0, 0, 0, 0);
+
+  const [monthlyTxs, railCounts] = await Promise.all([
+    prisma.transaction.aggregate({
+      where: { senderId: userId, createdAt: { gte: monthStart } },
+      _sum: { musdAmount: true, feeAmount: true },
+    }),
+    prisma.transaction.groupBy({
+      by: ["railType"],
+      where: { senderId: userId, createdAt: { gte: monthStart } },
+      _count: { railType: true },
+      orderBy: { _count: { railType: "desc" } },
+      take: 1,
+    }),
+  ]);
+
+  const shaped = transactions.map((tx) => ({
+    id: tx.id,
+    createdAt: tx.createdAt.toISOString(),
+    confirmedAt: null,
+    completedAt: tx.completedAt?.toISOString() ?? null,
     recipient: {
-      name: transaction.recipient.name,
-      phoneNumber: transaction.recipient.phoneNumber,
-      initials: transaction.recipient.name
-        .split(/\s+/)
-        .filter(Boolean)
-        .slice(0, 2)
-        .map((part) => part[0]?.toUpperCase() ?? "")
-        .join("") || "NA",
+      name: tx.recipient.name,
+      phoneNumber: tx.recipient.phoneNumber,
+      initials: buildRecipientInitials(tx.recipient.name),
     },
-    railType: transaction.railType,
-    musdAmount: transaction.musdAmount.toString(),
-    fiatAmount: transaction.fiatAmount.toString(),
-    fiatCurrency: transaction.fiatCurrency,
-    status: transaction.status,
-    createdAt: transaction.createdAt.toISOString(),
-    txHash: transaction.txHash ?? undefined,
+    railType: tx.railType,
+    musdAmount: tx.musdAmount.toString(),
+    fiatAmount: tx.fiatAmount.toString(),
+    fiatCurrency: tx.fiatCurrency,
+    status: tx.status,
+    txHash: tx.txHash ?? null,
+    blockNumber: tx.blockNumber ?? null,
+    railReference: tx.railReference ?? null,
+    feeAmount: tx.feeAmount.toString(),
   }));
 
   return NextResponse.json({
-    transactions: normalizedTransactions,
+    transactions: shaped,
     total,
     page,
-    totalPages,
+    totalPages: Math.ceil(total / limit),
+    summary: {
+      totalSentMUSD: monthlyTxs._sum.musdAmount?.toString() ?? "0",
+      totalFeesMUSD: monthlyTxs._sum.feeAmount?.toString() ?? "0",
+      mostUsedRail: railCounts[0]?.railType ?? null,
+    },
   });
 }
