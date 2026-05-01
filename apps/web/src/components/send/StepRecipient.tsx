@@ -66,6 +66,10 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
   const formRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
+    let cancelled = false
+    let sessionRetries = 0
+    let retryTimer: ReturnType<typeof setTimeout> | null = null
+
     const waitForSessionReady = async (maxAttempts = 5, delayMs = 500): Promise<boolean> => {
       for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
         const sessionRes = await fetch('/api/auth/session', {
@@ -91,12 +95,26 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
 
     const loadRecipients = async () => {
       try {
-        const sessionReady = await waitForSessionReady()
+        const sessionReady = await waitForSessionReady(6, 500)
         if (!sessionReady) {
+          if (sessionRetries < 10) {
+            sessionRetries += 1
+            setLoadError('Finalizing wallet session...')
+            setLoading(false)
+            retryTimer = setTimeout(() => {
+              if (!cancelled) {
+                void loadRecipients()
+              }
+            }, 1200)
+            return
+          }
+
           setRecipients([])
-          setLoadError('Session not ready yet. Complete wallet signature and retry.')
+          setLoadError('Unable to establish wallet session. Please disconnect and reconnect.')
           return
         }
+
+        sessionRetries = 0
 
         const response = await fetch('/api/recipients', {
           credentials: 'same-origin',
@@ -130,6 +148,13 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
     }
 
     void loadRecipients()
+
+    return () => {
+      cancelled = true
+      if (retryTimer) {
+        clearTimeout(retryTimer)
+      }
+    }
   }, [])
 
   const filtered = recipients.filter(r => {

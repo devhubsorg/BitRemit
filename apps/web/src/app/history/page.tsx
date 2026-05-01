@@ -55,10 +55,14 @@ async function waitForSessionReady(maxAttempts = 5, delayMs = 500): Promise<bool
   return false
 }
 
+  const SESSION_RETRY_LIMIT = 10
+
 export default function HistoryPage() {
   const router = useRouter()
   const { status } = useAccount()
   const mounted = useRef(false)
+    const sessionRetryRef = useRef(0)
+    const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const [filters, setFilters] = useState<HistoryFilters>(INITIAL_FILTERS)
   const [data, setData] = useState<TransactionsResponse | null>(null)
@@ -68,20 +72,39 @@ export default function HistoryPage() {
 
   useEffect(() => {
     mounted.current = true
-  }, [])
+  }, [status])
 
   useEffect(() => {
     if (mounted.current && status === 'disconnected') router.push('/')
   }, [status, router])
 
+    useEffect(() => {
+      return () => {
+        if (retryTimerRef.current) {
+          clearTimeout(retryTimerRef.current)
+        }
+      }
+    }, [])
+
   const fetchTransactions = useCallback(async (f: HistoryFilters) => {
     setLoading(true)
     setError(null)
     try {
-      const sessionReady = await waitForSessionReady()
+        const sessionReady = await waitForSessionReady(6, 500)
       if (!sessionReady) {
-        throw new Error('Session not ready yet. Complete wallet signature and retry.')
+          if (status === 'connected' && sessionRetryRef.current < SESSION_RETRY_LIMIT) {
+            sessionRetryRef.current += 1
+            setError('Finalizing wallet session...')
+            setLoading(false)
+            retryTimerRef.current = setTimeout(() => {
+              void fetchTransactions(f)
+            }, 1200)
+            return
+          }
+          throw new Error('Unable to establish wallet session. Please disconnect and reconnect.')
       }
+
+        sessionRetryRef.current = 0
 
       const qs = buildQueryString({
         page: f.page,
@@ -106,7 +129,7 @@ export default function HistoryPage() {
     } finally {
       setLoading(false)
     }
-  }, [])
+  }, [status])
 
   useEffect(() => {
     if (status === 'connected') fetchTransactions(filters)
