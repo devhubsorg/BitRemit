@@ -6,7 +6,7 @@ for (const line of readFileSync(envPath, "utf8").split("\n")) {
   const m = line.match(/^([A-Z_]+)\s*=\s*"?([^"\n]+)"?/);
   if (m) process.env[m[1]] = m[2];
 }
-import { PrismaClient } from "./generated/client/index.js";
+import { PrismaClient } from "@prisma/client";
 const p = new PrismaClient();
 
 const users = await p.user.findMany({

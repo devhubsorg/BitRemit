@@ -43,12 +43,32 @@ const DEPLOY_BLOCK_NUMBER = BigInt(process.env.DEPLOY_BLOCK_NUMBER || "0");
 // BullMQ / Redis Connection setup
 // Converts the Upstash HTTPS URL to a rediss:// format for ioredis
 const getRedisConnection = () => {
-  const url = process.env.UPSTASH_REDIS_URL;
+  const rawUrl = process.env.UPSTASH_REDIS_URL;
   const token = process.env.UPSTASH_REDIS_TOKEN;
-  if (!url || !token) throw new Error("Missing Upstash Redis configuration");
+  if (!rawUrl || !token) throw new Error("Missing Upstash Redis configuration");
 
-  const host = url.replace("https://", "");
-  return new Redis(`rediss://default:${token}@${host}:6379`, {
+  let host: string;
+  let port = 6379;
+  let useTls = true;
+
+  if (rawUrl.startsWith("redis://") || rawUrl.startsWith("rediss://")) {
+    const parsed = new URL(rawUrl);
+    host = parsed.hostname;
+    port = parsed.port ? Number(parsed.port) : 6379;
+    useTls = parsed.protocol === "rediss:";
+  } else {
+    // Upstash REST URL format: https://<host>
+    const parsed = new URL(rawUrl);
+    host = parsed.hostname;
+    useTls = true;
+  }
+
+  return new Redis({
+    host,
+    port,
+    username: "default",
+    password: token,
+    tls: useTls ? {} : undefined,
     maxRetriesPerRequest: null,
   });
 };
