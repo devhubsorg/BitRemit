@@ -6,22 +6,19 @@
   "types": "src/index.ts",
   "dependencies": {
     "@mezo-org/passport": "^0.17.2",
-    "jose": "^6.2.2",
-    "viem": "^2",
-    "wagmi": "^2.19.5"
+    "jose": "^6.2.2"
   },
   "devDependencies": {
     "@types/node": "^20.19.39",
     "@types/react": "19.1.8",
     "@types/react-dom": "19.1.6",
-    "next": "15.3.5",
-    "react": "19.1.0",
-    "react-dom": "19.1.0",
     "typescript": "^5.9.3"
   },
   "peerDependencies": {
     "next": ">=15.0.0",
     "react": ">=18.0.0",
-    "react-dom": ">=18.0.0"
+    "react-dom": ">=18.0.0",
+    "viem": "^2",
+    "wagmi": "^2.19.5"
   }
 }

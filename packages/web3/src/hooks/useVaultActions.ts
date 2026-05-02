@@ -1,3 +1,5 @@
+"use client";
+
 import { useEffect } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
 import { erc20Abi, type Address, type Abi } from "viem";

@@ -11,14 +11,13 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import type { VaultResponse } from '@bitremit/shared'
+import type { VaultResponse, VaultHealthResult } from '@/types'
 import {
   useDepositCollateral,
   useRepayMUSD,
   useApproveTBTC,
   useApproveMUSD,
-  type VaultHealthResult,
-} from 'web3'
+} from '@/hooks'
 import { parseUnits } from 'viem'
 
 interface VaultCardProps {
@@ -38,7 +37,7 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
   const { repayMUSD, isPending: isRepaying } = useRepayMUSD({ onSuccess: () => vault.refetch() })
   const { approveMUSD, isPending: isApprovingMUSD } = useApproveMUSD()
 
-  const ratioPercent = Math.min((vaultHealth.collateralRatio / 300) * 100, 100)
+  const ratioPercent = Math.min((vault.collateralRatio / 300) * 100, 100)
 
   const handleDeposit = async () => {
     if (!depositAmount) return;
@@ -177,7 +176,7 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
                 }}
               />
             </div>
-            <p style={{ color: '#888', fontSize: '11px' }}>{vaultHealth.message}</p>
+            <p style={{ color: '#888', fontSize: '11px' }}>{vaultHealth.label}</p>
           </div>
 
           {/* Vertical divider */}

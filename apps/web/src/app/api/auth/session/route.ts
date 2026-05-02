@@ -1,15 +1,24 @@
 import { NextResponse } from "next/server";
-import { requireAuth } from "web3";
+import { cookies } from "next/headers";
+import { verifyToken, SESSION_COOKIE_NAME, unauthorizedResponse } from "web3";
 
-/**
- * GET /api/auth/session
- *
- * Validates the current session from either Bearer JWT or session cookie.
- * Returns the authenticated wallet address on success.
- */
 export async function GET(request: Request): Promise<Response> {
-  const auth = await requireAuth(request);
-  if (auth instanceof Response) return auth;
+  const cookieStore = await cookies();
+  const token = cookieStore.get(SESSION_COOKIE_NAME)?.value;
+  
+  console.log("[DEBUG] Session Token found:", !!token);
+  
+  if (!token) {
+    console.log("[DEBUG] No token in cookies");
+    return unauthorizedResponse();
+  }
 
+  const auth = await verifyToken(token);
+  if (auth instanceof Response) {
+    console.log("[DEBUG] verifyToken failed (invalid signature, expired, or secret mismatch)");
+    return auth;
+  }
+
+  console.log("[DEBUG] Session verified for:", auth.address);
   return NextResponse.json({ address: auth.address, userId: auth.userId });
 }

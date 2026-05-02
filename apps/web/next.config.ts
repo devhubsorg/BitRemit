@@ -32,6 +32,8 @@ const reactJsxRuntime = require.resolve("react/jsx-runtime");
 const reactJsxDevRuntime = require.resolve("react/jsx-dev-runtime");
 const reactRoot = path.dirname(reactEntry);
 const reactDomRoot = path.dirname(reactDomEntry);
+const wagmiEntry = require.resolve("wagmi/package.json");
+const wagmiRoot = path.dirname(wagmiEntry);
 
 const nextConfig: NextConfig = {
   transpilePackages: [
@@ -39,6 +41,8 @@ const nextConfig: NextConfig = {
     "@mezo-org/orangekit-smart-account",
     "@mezo-org/orangekit-contracts",
     "@mezo-org/passport",
+    "web3",
+    "@bitremit/shared",
   ],
 
   // ---------- Turbopack (next dev & next build --turbopack) ----------
@@ -63,6 +67,7 @@ const nextConfig: NextConfig = {
       "react-dom": path.relative(process.cwd(), reactDomRoot),
       "react/jsx-runtime": path.relative(process.cwd(), reactJsxRuntime),
       "react/jsx-dev-runtime": path.relative(process.cwd(), reactJsxDevRuntime),
+      wagmi: path.relative(process.cwd(), wagmiRoot),
     },
   },
 
@@ -97,6 +102,7 @@ const nextConfig: NextConfig = {
         "react-dom": reactDomRoot,
         "react/jsx-runtime": reactJsxRuntime,
         "react/jsx-dev-runtime": reactJsxDevRuntime,
+        wagmi: wagmiRoot,
       };
     }
 

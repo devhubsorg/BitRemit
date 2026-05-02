@@ -1,3 +1,5 @@
+"use client";
+
 import { useVault } from "./useVault";
 
 export type VaultHealthStatus = "healthy" | "warning" | "danger";
