@@ -227,9 +227,10 @@ export async function POST(request: Request): Promise<NextResponse> {
 
     return response;
   } catch (error) {
-    console.error("[auth/verify] Failed to issue session", error);
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    console.error("[auth/verify] Failed to issue session:", error);
     return NextResponse.json(
-      { error: "Failed to issue wallet session" },
+      { error: "Failed to issue wallet session", detail: errorMsg },
       { status: 500 },
     );
   }
