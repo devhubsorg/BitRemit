@@ -7,7 +7,7 @@ For more information, see: https://pris.ly/prisma-config
 
 Prisma schema loaded from prisma\schema.prisma
 
-✔ Generated Prisma Client (v6.19.3) to .\generated\client in 217ms
+✔ Generated Prisma Client (v6.19.3) to .\generated\client in 240ms
 
 Start by importing your Prisma Client (See: https://pris.ly/d/importing-client)
 
