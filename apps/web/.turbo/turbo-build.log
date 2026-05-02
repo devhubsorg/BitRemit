@@ -1,8 +1,8 @@
 
-> web@0.1.0 build C:\Users\SPEED\OneDrive\Documents\BitRemit\BitRemit\apps\web
+> web@0.1.0 build C:\Users\Favour\Desktop\BitRemit\apps\web
 > next build
 
-▲ Next.js 16.2.3 (Turbopack)
+▲ Next.js 16.2.4 (Turbopack)
 
   Creating an optimized production build ...
 Turbopack build encountered 1 warnings:
@@ -25,7 +25,38 @@ Import trace:
     ./apps/web/src/app/api/transactions/route.ts
 
 
-✓ Compiled successfully in 9.7min
+✓ Compiled successfully in 45s
   Running TypeScript ...
-Next.js build worker exited with code: 3221226505 and signal: null
- ELIFECYCLE  Command failed with exit code 3221226505.
+  Finished TypeScript in 33.3s ...
+  Collecting page data using 3 workers ...
+  Generating static pages using 3 workers (0/17) ...
+  Generating static pages using 3 workers (4/17) 
+  Generating static pages using 3 workers (8/17) 
+  Generating static pages using 3 workers (12/17) 
+✓ Generating static pages using 3 workers (17/17) in 2.3s
+  Finalizing page optimization ...
+
+Route (app)
+┌ ƒ /
+├ ○ /_not-found
+├ ƒ /api/auth/logout
+├ ƒ /api/auth/nonce
+├ ƒ /api/auth/session
+├ ƒ /api/auth/verify
+├ ƒ /api/indexer/sync
+├ ƒ /api/offramp/callback
+├ ƒ /api/rates
+├ ƒ /api/recipients
+├ ƒ /api/remittance
+├ ƒ /api/remittance/[id]
+├ ƒ /api/stats
+├ ƒ /api/transactions
+├ ƒ /api/vault
+├ ○ /dashboard
+├ ○ /history
+└ ○ /send
+
+
+○  (Static)   prerendered as static content
+ƒ  (Dynamic)  server-rendered on demand
+

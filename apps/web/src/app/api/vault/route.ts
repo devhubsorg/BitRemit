@@ -112,12 +112,18 @@ export async function GET(request: NextRequest) {
   const userAddress = address as Address;
 
   // ── Always fetch maxBorrowable fresh (not stored in DB) ─────────────────
-  const maxBorrowableRaw = await publicClient.readContract({
-    address: VAULT_ADDRESS,
-    abi: VAULT_ABI,
-    functionName: "getMaxBorrowable",
-    args: [userAddress],
-  });
+  let maxBorrowableRaw = BigInt(0);
+  try {
+    maxBorrowableRaw = await publicClient.readContract({
+      address: VAULT_ADDRESS,
+      abi: VAULT_ABI,
+      functionName: "getMaxBorrowable",
+      args: [userAddress],
+    });
+  } catch {
+    // Vault is empty or not initialized — maxBorrowable is 0
+    maxBorrowableRaw = BigInt(0);
+  }
   const maxBorrowable = formatUnits(maxBorrowableRaw, 18);
 
   // ── DB cache lookup ──────────────────────────────────────────────────────

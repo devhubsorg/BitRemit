@@ -11,11 +11,17 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
-import type { VaultResponse, VaultHealthResult } from '../../types'
-import { useDepositCollateral, useRepayMUSD } from '../../hooks'
+import type { VaultResponse, VaultHealthResult } from '@/types'
+import {
+  useDepositCollateral,
+  useRepayMUSD,
+  useApproveTBTC,
+  useApproveMUSD,
+} from '@/hooks'
+import { parseUnits } from 'viem'
 
 interface VaultCardProps {
-  vault: VaultResponse
+  vault: VaultResponse & { refetch: () => void; isLoading: boolean }
   vaultHealth: VaultHealthResult
 }
 
@@ -25,23 +31,38 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
   const [depositAmount, setDepositAmount] = useState('')
   const [repayAmount, setRepayAmount] = useState('')
 
-  const { deposit, isPending: isDepositing } = useDepositCollateral()
-  const { repay, isPending: isRepaying } = useRepayMUSD()
+  const { depositCollateral, isPending: isDepositing } = useDepositCollateral({ onSuccess: () => vault.refetch() })
+  const { approveTBTC, isPending: isApprovingTBTC } = useApproveTBTC()
+  
+  const { repayMUSD, isPending: isRepaying } = useRepayMUSD({ onSuccess: () => vault.refetch() })
+  const { approveMUSD, isPending: isApprovingMUSD } = useApproveMUSD()
 
   const ratioPercent = Math.min((vault.collateralRatio / 300) * 100, 100)
 
   const handleDeposit = async () => {
-    await deposit(depositAmount)
-    setDepositAmount('')
-    setAddCollateralOpen(false)
-    vault.refetch()
+    if (!depositAmount) return;
+    try {
+      const amount = parseUnits(depositAmount, 18);
+      await approveTBTC(amount);
+      await depositCollateral(amount);
+      setDepositAmount('')
+      setAddCollateralOpen(false)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   const handleRepay = async () => {
-    await repay(repayAmount)
-    setRepayAmount('')
-    setRepayOpen(false)
-    vault.refetch()
+    if (!repayAmount) return;
+    try {
+      const amount = parseUnits(repayAmount, 18);
+      await approveMUSD(amount);
+      await repayMUSD(amount);
+      setRepayAmount('')
+      setRepayOpen(false)
+    } catch (e) {
+      console.error(e)
+    }
   }
 
   return (
@@ -251,10 +272,10 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
             </Button>
             <Button
               onClick={handleDeposit}
-              disabled={isDepositing || !depositAmount}
+              disabled={isDepositing || isApprovingTBTC || !depositAmount}
               style={{ background: '#F7931A', color: '#000', fontWeight: 700, border: 'none' }}
             >
-              {isDepositing ? 'Signing…' : 'Add Collateral'}
+              {isApprovingTBTC ? 'Approving tBTC…' : isDepositing ? 'Depositing…' : 'Add Collateral'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -297,10 +318,10 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
             </Button>
             <Button
               onClick={handleRepay}
-              disabled={isRepaying || !repayAmount}
+              disabled={isRepaying || isApprovingMUSD || !repayAmount}
               style={{ background: '#F7931A', color: '#000', fontWeight: 700, border: 'none' }}
             >
-              {isRepaying ? 'Signing…' : 'Repay Loan'}
+              {isApprovingMUSD ? 'Approving MUSD…' : isRepaying ? 'Repaying…' : 'Repay Loan'}
             </Button>
           </DialogFooter>
         </DialogContent>

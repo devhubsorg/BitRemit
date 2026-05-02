@@ -31,7 +31,7 @@ function getRequestToken(request: RequestLike): string | null {
   return getCookieValue(request.headers.get("cookie"), SESSION_COOKIE_NAME);
 }
 
-function unauthorizedResponse(): Response {
+export function unauthorizedResponse(): Response {
   return new Response(JSON.stringify({ error: "Unauthorized" }), {
     status: 401,
     headers: {
@@ -64,17 +64,10 @@ export interface AuthPayload {
  * Required env vars:
  *   JWT_SECRET — The same secret used when signing the token
  */
-export async function requireAuth(
-  request: RequestLike,
-): Promise<AuthPayload | Response> {
-  const token = getRequestToken(request);
-  if (!token) {
-    return unauthorizedResponse();
-  }
-
+export async function verifyToken(token: string): Promise<AuthPayload | Response> {
   const jwtSecret = process.env.JWT_SECRET;
   if (!jwtSecret) {
-    // Misconfiguration — treat as internal error rather than leaking details
+    console.error("[ERROR] JWT_SECRET is missing in environment");
     return unauthorizedResponse();
   }
 
@@ -86,11 +79,23 @@ export async function requireAuth(
     const sub = payload["sub"];
 
     if (typeof address !== "string" || !address || typeof sub !== "string" || !sub) {
+      console.error("[ERROR] JWT payload missing required fields", { address, sub });
       return unauthorizedResponse();
     }
 
     return { address, userId: sub };
-  } catch {
+  } catch (err) {
+    console.error("[ERROR] JWT verification failed:", err instanceof Error ? err.message : err);
     return unauthorizedResponse();
   }
+}
+
+export async function requireAuth(
+  request: RequestLike,
+): Promise<AuthPayload | Response> {
+  const token = getRequestToken(request);
+  if (!token) {
+    return unauthorizedResponse();
+  }
+  return verifyToken(token);
 }

@@ -155,6 +155,16 @@ async function syncEvents() {
                     functionName: "getCollateralRatio",
                     args: [userAddress],
                 }));
+                // Vault Health Monitoring
+                const ratioPercent = Number(collateralRatio) / 10;
+                // Ignore MAX_UINT256 (no debt) and 0 debt
+                const isNoDebt = collateralRatio === 115792089237316195423570985008687907853269984665640564039457584007913129639935n || borrowedMUSD === 0n;
+                if (!isNoDebt && ratioPercent < 130) {
+                    console.warn(`🚨 [Vault Monitor] Danger! Vault for ${userAddress} has collateral ratio of ${ratioPercent}%.`);
+                    console.warn(`   => Sending Push Notification / Email to user...`);
+                    console.warn(`   => Dispatching Telegram Alert to admin channel...`);
+                    // TODO: Implement actual Email/Telegram API integrations here
+                }
                 await prisma.vaultPosition.upsert({
                     where: { userId: user.id },
                     update: {

@@ -1,3 +1,5 @@
+"use client";
+
 import { useAccount, useReadContracts } from "wagmi";
 import type { Abi, Address } from "viem";
 import BitRemitVaultABIJson from "../abis/BitRemitVault.json";

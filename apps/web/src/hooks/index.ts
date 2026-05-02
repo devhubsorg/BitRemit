@@ -122,13 +122,13 @@ export function useStats(): StatsResponse & { isLoading: boolean } {
 
 // ─── useDepositCollateral ─────────────────────────────────────────────────────
 
-export function useDepositCollateral() {
+export function useDepositCollateral({ onSuccess }: { onSuccess?: () => void } = {}) {
   const { writeContractAsync } = useWriteContract()
   const [isPending, setIsPending] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const deposit = useCallback(async (amount: string) => {
+  const depositCollateral = useCallback(async (amount: bigint) => {
     setIsPending(true)
     setError(null)
     setIsSuccess(false)
@@ -137,28 +137,29 @@ export function useDepositCollateral() {
         address: VAULT_ADDRESS,
         abi: BitRemitVaultABI,
         functionName: 'depositCollateral',
-        args: [parseUnits(amount, 18)],
+        args: [amount],
       })
       setIsSuccess(true)
+      if (onSuccess) onSuccess()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setIsPending(false)
     }
-  }, [writeContractAsync])
+  }, [writeContractAsync, onSuccess])
 
-  return { deposit, isPending, isSuccess, error }
+  return { depositCollateral, isPending, isSuccess, error }
 }
 
 // ─── useRepayMUSD ─────────────────────────────────────────────────────────────
 
-export function useRepayMUSD() {
+export function useRepayMUSD({ onSuccess }: { onSuccess?: () => void } = {}) {
   const { writeContractAsync } = useWriteContract()
   const [isPending, setIsPending] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const repay = useCallback(async (amount: string) => {
+  const repayMUSD = useCallback(async (amount: bigint) => {
     setIsPending(true)
     setError(null)
     setIsSuccess(false)
@@ -167,15 +168,145 @@ export function useRepayMUSD() {
         address: VAULT_ADDRESS,
         abi: BitRemitVaultABI,
         functionName: 'repayMUSD',
-        args: [parseUnits(amount, 18)],
+        args: [amount],
       })
       setIsSuccess(true)
+      if (onSuccess) onSuccess()
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error')
     } finally {
       setIsPending(false)
     }
-  }, [writeContractAsync])
+  }, [writeContractAsync, onSuccess])
 
-  return { repay, isPending, isSuccess, error }
+  return { repayMUSD, isPending, isSuccess, error }
+}
+
+// ─── useApproveTBTC ──────────────────────────────────────────────────────────
+
+const TBTC_ADDRESS = (process.env.NEXT_PUBLIC_TBTC_ADDRESS || process.env.TBTC_ADDRESS) as Address;
+import { erc20Abi } from "viem";
+
+export function useApproveTBTC({ onSuccess }: { onSuccess?: () => void } = {}) {
+  const { writeContractAsync } = useWriteContract()
+  const [isPending, setIsPending] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const approveTBTC = useCallback(async (amount: bigint) => {
+    setIsPending(true)
+    setError(null)
+    setIsSuccess(false)
+    try {
+      await writeContractAsync({
+        address: TBTC_ADDRESS,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [VAULT_ADDRESS, amount],
+      })
+      setIsSuccess(true)
+      if (onSuccess) onSuccess()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setIsPending(false)
+    }
+  }, [writeContractAsync, onSuccess])
+
+  return { approveTBTC, isPending, isSuccess, error }
+}
+
+// ─── useBorrowMUSD ───────────────────────────────────────────────────────────
+
+export function useBorrowMUSD({ onSuccess }: { onSuccess?: () => void } = {}) {
+  const { writeContractAsync } = useWriteContract()
+  const [isPending, setIsPending] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const borrowMUSD = useCallback(async (amount: bigint) => {
+    setIsPending(true)
+    setError(null)
+    setIsSuccess(false)
+    try {
+      await writeContractAsync({
+        address: VAULT_ADDRESS,
+        abi: BitRemitVaultABI,
+        functionName: 'borrowMUSD',
+        args: [amount],
+      })
+      setIsSuccess(true)
+      if (onSuccess) onSuccess()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setIsPending(false)
+    }
+  }, [writeContractAsync, onSuccess])
+
+  return { borrowMUSD, isPending, isSuccess, error }
+}
+
+// ─── useApproveMUSD ──────────────────────────────────────────────────────────
+
+const MUSD_ADDRESS = process.env.NEXT_PUBLIC_MUSD_ADDRESS as Address;
+
+export function useApproveMUSD({ onSuccess }: { onSuccess?: () => void } = {}) {
+  const { writeContractAsync } = useWriteContract()
+  const [isPending, setIsPending] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const approveMUSD = useCallback(async (amount: bigint) => {
+    setIsPending(true)
+    setError(null)
+    setIsSuccess(false)
+    try {
+      await writeContractAsync({
+        address: MUSD_ADDRESS,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [VAULT_ADDRESS, amount],
+      })
+      setIsSuccess(true)
+      if (onSuccess) onSuccess()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setIsPending(false)
+    }
+  }, [writeContractAsync, onSuccess])
+
+  return { approveMUSD, isPending, isSuccess, error }
+}
+
+// ─── useWithdrawCollateral ───────────────────────────────────────────────────
+
+export function useWithdrawCollateral({ onSuccess }: { onSuccess?: () => void } = {}) {
+  const { writeContractAsync } = useWriteContract()
+  const [isPending, setIsPending] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const withdrawCollateral = useCallback(async (amount: bigint) => {
+    setIsPending(true)
+    setError(null)
+    setIsSuccess(false)
+    try {
+      await writeContractAsync({
+        address: VAULT_ADDRESS,
+        abi: BitRemitVaultABI,
+        functionName: 'withdrawCollateral',
+        args: [amount],
+      })
+      setIsSuccess(true)
+      if (onSuccess) onSuccess()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Unknown error')
+    } finally {
+      setIsPending(false)
+    }
+  }, [writeContractAsync, onSuccess])
+
+  return { withdrawCollateral, isPending, isSuccess, error }
 }
