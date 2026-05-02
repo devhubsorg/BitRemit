@@ -6,7 +6,7 @@ import {
   toHex,
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
-import { PrismaClient } from "./generated/client/index.js";
+import { PrismaClient } from "@prisma/client";
 
 // ── Config ────────────────────────────────────────────────────────────────
 const DEPLOYER_KEY =

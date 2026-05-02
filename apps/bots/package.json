@@ -6,11 +6,12 @@
   "scripts": {
     "dev:whatsapp": "tsx --env-file=../../.env.local whatsapp/index.ts",
     "dev:telegram": "tsx --env-file=../../.env.local telegram/index.ts",
-    "build": "tsc",
+    "build": "pnpm --filter @bitremit/database run db:generate && tsc",
     "start": "tsx whatsapp/index.ts"
   },
   "dependencies": {
     "@bitremit/database": "workspace:*",
+    "tsx": "^4.19.2",
     "@grammyjs/conversations": "^2.1.1",
     "@upstash/redis": "^1.37.0",
     "dotenv": "^16.4.5",

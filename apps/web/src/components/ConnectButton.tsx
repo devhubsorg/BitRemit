@@ -3,6 +3,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { useConnectModal } from "@rainbow-me/rainbowkit";
 import { SiweMessage } from "siwe";
+import { isAddress } from "viem";
 import { useAccount, useChainId, useDisconnect, useSignMessage } from "wagmi";
 import { useEffect, useRef, useState } from "react";
 
@@ -32,9 +33,11 @@ export function ConnectButton() {
   const wasConnectedRef = useRef(false);
   const authenticatedAddressRef = useRef<string | null>(null);
   const authInFlightRef = useRef(false);
-  const lastFailedAuthRef = useRef<
-    { address: string; at: number; cooldownMs?: number } | null
-  >(null);
+  const lastFailedAuthRef = useRef<{
+    address: string;
+    at: number;
+    cooldownMs?: number;
+  } | null>(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -67,7 +70,10 @@ export function ConnectButton() {
     return nonce;
   };
 
-  const verifySession = async (message: string, signature: string): Promise<void> => {
+  const verifySession = async (
+    message: string,
+    signature: string,
+  ): Promise<void> => {
     const verifyResponse = await fetch("/api/auth/verify", {
       method: "POST",
       headers: {
@@ -122,6 +128,21 @@ export function ConnectButton() {
       const normalizedAddress = address.toLowerCase();
       const lastFailed = lastFailedAuthRef.current;
 
+      if (!isAddress(address)) {
+        lastFailedAuthRef.current = {
+          address: normalizedAddress,
+          at: Date.now(),
+          cooldownMs: 5 * 60 * 1000,
+        };
+        console.error(
+          "Wallet authentication failed",
+          new Error(
+            "Connected wallet address is not EVM-compatible for SIWE. Use an EVM wallet (MetaMask/Injected).",
+          ),
+        );
+        return;
+      }
+
       if (
         lastFailed &&
         lastFailed.address === normalizedAddress &&
@@ -156,7 +177,9 @@ export function ConnectButton() {
         }
 
         if (sessionResponse.ok) {
-          const session = (await sessionResponse.json()) as { address?: string };
+          const session = (await sessionResponse.json()) as {
+            address?: string;
+          };
           if (session.address?.toLowerCase() === normalizedAddress) {
             authenticatedAddressRef.current = normalizedAddress;
             lastFailedAuthRef.current = null;
@@ -187,7 +210,9 @@ export function ConnectButton() {
           // One-time recovery for race/expiry: fetch a fresh nonce and re-sign.
           const retryNonce = await requestNonce();
           const retryMessage = buildSiweMessage(address, retryNonce);
-          const retrySignature = await signMessageAsync({ message: retryMessage });
+          const retrySignature = await signMessageAsync({
+            message: retryMessage,
+          });
           await verifySession(retryMessage, retrySignature);
         }
 
@@ -199,8 +224,12 @@ export function ConnectButton() {
         }
       } catch (error) {
         const message =
-          error instanceof Error ? error.message : "Wallet authentication failed";
-        const blockedByCheckpoint = /security checkpoint|forbidden/i.test(message);
+          error instanceof Error
+            ? error.message
+            : "Wallet authentication failed";
+        const blockedByCheckpoint = /security checkpoint|forbidden/i.test(
+          message,
+        );
 
         lastFailedAuthRef.current = {
           address: normalizedAddress,
