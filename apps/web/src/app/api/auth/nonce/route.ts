@@ -2,6 +2,8 @@ import { randomBytes } from "crypto";
 import { NextResponse } from "next/server";
 import { saveNonce } from "@/lib/nonceStore";
 
+const NONCE_FALLBACK_COOKIE_NAME = "bitremit_auth_nonce_fallback";
+
 /**
  * GET /api/auth/nonce
  *
@@ -19,10 +21,20 @@ export async function GET(): Promise<NextResponse> {
     // Store nonce with a 5-minute expiry; value "1" is a sentinel
     await saveNonce(`nonce:${nonce}`, 300);
   } catch {
-    return NextResponse.json(
-      { error: "Nonce service unavailable" },
-      { status: 503 },
-    );
+    // Fallback mode for environments where Redis is temporarily unavailable.
+    // This keeps auth unblocked while still allowing one-time nonce use in
+    // /api/auth/verify via an HttpOnly cookie.
+    const response = NextResponse.json({ nonce, fallback: true });
+    response.cookies.set({
+      name: NONCE_FALLBACK_COOKIE_NAME,
+      value: nonce,
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      path: "/",
+      maxAge: 300,
+    });
+    return response;
   }
 
   return NextResponse.json({ nonce });
