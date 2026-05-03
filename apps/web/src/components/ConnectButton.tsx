@@ -6,12 +6,21 @@ import { SiweMessage } from "siwe";
 import { isAddress } from "viem";
 import { useAccount, useChainId, useDisconnect, useSignMessage } from "wagmi";
 import { useEffect, useRef, useState } from "react";
+import { SignInWithWalletMessage } from "@mezo-org/sign-in-with-wallet";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function truncateAddress(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`;
 }
+
+type BitcoinProvider = {
+  getAddress(): Promise<string>;
+};
+
+type BitcoinCapableConnector = {
+  getBitcoinProvider?: () => BitcoinProvider;
+};
 
 // ─── ConnectButton ────────────────────────────────────────────────────────────
 // • Disconnected  → single "Connect Wallet" button; click opens the Mezo
@@ -23,7 +32,7 @@ function truncateAddress(address: string): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function ConnectButton() {
-  const { address, isConnected } = useAccount();
+  const { address, isConnected, connector } = useAccount();
   const chainId = useChainId();
   const { openConnectModal } = useConnectModal();
   const { disconnect } = useDisconnect();
@@ -40,9 +49,70 @@ export function ConnectButton() {
   } | null>(null);
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [btcAddress, setBtcAddress] = useState<string | undefined>(undefined);
 
-  const buildSiweMessage = (walletAddress: string, nonce: string): string =>
-    new SiweMessage({
+  // True when the connected wallet is a Bitcoin wallet (Unisat / Xverse via
+  // OrangeKit). These connectors expose a `getBitcoinProvider` method.
+  const isBitcoinConnector =
+    typeof (connector as BitcoinCapableConnector | undefined)
+      ?.getBitcoinProvider === "function";
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const loadBitcoinAddress = async () => {
+      if (!isConnected || !connector || !isBitcoinConnector) {
+        setBtcAddress(undefined);
+        return;
+      }
+
+      try {
+        const bitcoinProvider = (
+          connector as BitcoinCapableConnector
+        ).getBitcoinProvider?.();
+
+        if (!bitcoinProvider) {
+          setBtcAddress(undefined);
+          return;
+        }
+
+        const nextBtcAddress = await bitcoinProvider.getAddress();
+        if (!cancelled) {
+          setBtcAddress(nextBtcAddress);
+        }
+      } catch {
+        if (!cancelled) {
+          setBtcAddress(undefined);
+        }
+      }
+    };
+
+    void loadBitcoinAddress();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [connector, isBitcoinConnector, isConnected]);
+
+  /**
+   * Build the sign-in message appropriate for the wallet type:
+   * - Bitcoin wallets (Unisat/Xverse): Sign-In With Wallet (SIWW) using the
+   *   native Bitcoin address.  No chainId field.
+   * - EVM wallets (MetaMask/Injected): standard EIP-4361 SIWE message.
+   */
+  const buildMessage = (walletAddress: string, nonce: string): string => {
+    if (btcAddress) {
+      return new SignInWithWalletMessage({
+        networkFamily: "bitcoin",
+        domain: window.location.host,
+        address: btcAddress,
+        statement: "Sign in to BitRemit",
+        uri: window.location.origin,
+        version: "1",
+        nonce,
+      }).prepareMessage();
+    }
+    return new SiweMessage({
       domain: window.location.host,
       address: walletAddress,
       statement: "Sign in to BitRemit",
@@ -51,6 +121,7 @@ export function ConnectButton() {
       chainId,
       nonce,
     }).prepareMessage();
+  };
 
   const requestNonce = async (): Promise<string> => {
     const nonceResponse = await fetch("/api/auth/nonce", {
@@ -59,7 +130,16 @@ export function ConnectButton() {
     });
 
     if (!nonceResponse.ok) {
-      throw new Error("Failed to create auth nonce");
+      let errorDetail = "Failed to create auth nonce";
+      try {
+        const payload = (await nonceResponse.json()) as { error?: string };
+        if (payload.error) {
+          errorDetail = payload.error;
+        }
+      } catch {
+        // Keep fallback message when body isn't JSON.
+      }
+      throw new Error(errorDetail);
     }
 
     const { nonce } = (await nonceResponse.json()) as { nonce?: string };
@@ -143,6 +223,12 @@ export function ConnectButton() {
         return;
       }
 
+      // If this is a Bitcoin connector but the native BTC address hasn't been
+      // fetched yet, wait — the effect will re-run once btcAddress is set.
+      if (isBitcoinConnector && btcAddress === undefined) {
+        return;
+      }
+
       if (
         lastFailed &&
         lastFailed.address === normalizedAddress &&
@@ -192,7 +278,7 @@ export function ConnectButton() {
         }
 
         const nonce = await requestNonce();
-        const message = buildSiweMessage(address, nonce);
+        const message = buildMessage(address, nonce);
         const signature = await signMessageAsync({ message });
 
         try {
@@ -209,7 +295,7 @@ export function ConnectButton() {
 
           // One-time recovery for race/expiry: fetch a fresh nonce and re-sign.
           const retryNonce = await requestNonce();
-          const retryMessage = buildSiweMessage(address, retryNonce);
+          const retryMessage = buildMessage(address, retryNonce);
           const retrySignature = await signMessageAsync({
             message: retryMessage,
           });
@@ -251,7 +337,7 @@ export function ConnectButton() {
     return () => {
       cancelled = true;
     };
-  }, [address, chainId, isConnected, router, signMessageAsync]);
+  }, [address, btcAddress, chainId, isBitcoinConnector, isConnected, router, signMessageAsync]);
 
   // ── Disconnected state ────────────────────────────────────────────────────
   if (!isConnected || !address) {
