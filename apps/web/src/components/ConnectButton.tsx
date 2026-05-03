@@ -39,7 +39,6 @@ export function ConnectButton() {
   const { signMessageAsync } = useSignMessage();
   const router = useRouter();
   const pathname = usePathname();
-  const wasConnectedRef = useRef(false);
   const authenticatedAddressRef = useRef<string | null>(null);
   const authInFlightRef = useRef(false);
   const lastFailedAuthRef = useRef<{
@@ -192,11 +191,10 @@ export function ConnectButton() {
     }
   };
 
-  const shouldAutoRedirect = () => pathname === "/" || !wasConnectedRef.current;
+  const shouldAutoRedirect = () => pathname === "/";
 
   useEffect(() => {
     if (!isConnected || !address || !chainId) {
-      wasConnectedRef.current = false;
       authenticatedAddressRef.current = null;
       authInFlightRef.current = false;
       return;
@@ -245,7 +243,6 @@ export function ConnectButton() {
         if (!cancelled && shouldAutoRedirect()) {
           navigateToDashboard();
         }
-        wasConnectedRef.current = true;
         return;
       }
 
@@ -272,7 +269,6 @@ export function ConnectButton() {
             if (!cancelled && shouldAutoRedirect()) {
               navigateToDashboard();
             }
-            wasConnectedRef.current = true;
             return;
           }
         }
@@ -328,7 +324,6 @@ export function ConnectButton() {
         if (!cancelled) {
           setIsAuthenticating(false);
         }
-        wasConnectedRef.current = isConnected;
       }
     };
 
@@ -404,7 +399,6 @@ export function ConnectButton() {
             }}
             style={disconnectBtnStyle}
             onFocus={() => setShowDisconnect(true)}
-            onBlur={() => setShowDisconnect(false)}
           >
             <DisconnectIcon />
             {isAuthenticating ? "Authenticating..." : "Disconnect"}
@@ -455,7 +449,7 @@ const addressPillStyle: React.CSSProperties = {
 
 const dropdownStyle: React.CSSProperties = {
   position: "absolute",
-  top: "calc(100% + 6px)",
+  top: "100%",
   right: 0,
   minWidth: 160,
   backgroundColor: "#1a1a1a",
