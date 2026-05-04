@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { TransactionResponse, TxStatus, PaymentRail } from '../../types'
+import { Skeleton } from '../ui/skeleton'
 
 interface RecentTransactionsTableProps {
   transactions: TransactionResponse[]
@@ -146,8 +147,26 @@ export function RecentTransactionsTable({
 
       {/* Rows */}
       {isLoading ? (
-        <div style={{ padding: '40px 28px', textAlign: 'center', color: '#555' }}>
-          Loading transactions…
+        <div style={{ padding: '18px 28px 20px' }}>
+          {Array.from({ length: 5 }).map((_, idx) => (
+            <div
+              key={idx}
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '2fr 1.6fr 1.1fr 1.2fr 1fr',
+                gap: '18px',
+                alignItems: 'center',
+                padding: '14px 0',
+                borderBottom: idx === 4 ? 'none' : '1px solid #333',
+              }}
+            >
+              <Skeleton style={{ height: 16, width: idx % 2 === 0 ? '72%' : '64%' }} />
+              <Skeleton style={{ height: 14, width: idx % 2 === 0 ? '55%' : '70%' }} />
+              <Skeleton style={{ height: 16, width: idx % 2 === 0 ? '50%' : '64%' }} />
+              <Skeleton style={{ height: 16, width: idx % 2 === 0 ? '58%' : '42%' }} />
+              <Skeleton style={{ height: 24, width: idx % 2 === 0 ? '76%' : '62%', borderRadius: 999 }} />
+            </div>
+          ))}
         </div>
       ) : transactions.length === 0 ? (
         <div style={{ padding: '60px 28px', textAlign: 'center' }}>

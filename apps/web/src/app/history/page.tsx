@@ -8,11 +8,13 @@ import { ConnectButton } from '@/components/ConnectButton'
 import { FilterBar } from '@/components/history/FilterBar'
 import { ExpandableRow, COL_WIDTHS } from '@/components/history/ExpandableRow'
 import { SummaryBar, Pagination } from '@/components/history/SummaryAndPagination'
+import { Skeleton } from '@/components/ui/skeleton'
 import type {
   HistoryFilters,
   TransactionsResponse,
 } from '@/types/history'
 import { exportToCSV, buildQueryString } from '@/lib/history/utils'
+import { useToast } from '@/hooks/use-toast'
 
 const INITIAL_FILTERS: HistoryFilters = {
   page: 1,
@@ -75,6 +77,7 @@ export default function HistoryPage() {
   const [loading, setLoading] = useState(true)
   const [isExporting, setIsExporting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const { toast } = useToast()
 
   useEffect(() => {
     mounted.current = true
@@ -145,7 +148,13 @@ export default function HistoryPage() {
       const json: TransactionsResponse = await res.json()
       setData(json)
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load transactions')
+      const message = e instanceof Error ? e.message : 'Failed to load transactions'
+      setError(message)
+      toast({
+        title: 'Something went wrong',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setLoading(false)
     }
@@ -177,7 +186,12 @@ export default function HistoryPage() {
       const json: TransactionsResponse = await res.json()
       exportToCSV(json.transactions)
     } catch (e) {
-      console.error(e)
+      const message = e instanceof Error ? e.message : 'Export failed'
+      toast({
+        title: 'Something went wrong',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setIsExporting(false)
     }
@@ -282,17 +296,27 @@ export default function HistoryPage() {
           </div>
 
           {loading ? (
-            <div style={{ padding: '60px 20px', textAlign: 'center' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                borderRadius: '50%',
-                border: '3px solid #333',
-                borderTopColor: '#F7931A',
-                animation: 'spin 0.8s linear infinite',
-                margin: '0 auto 14px',
-              }} />
-              <p style={{ color: '#555', fontSize: '14px' }}>Loading transactions…</p>
+            <div style={{ padding: '10px 20px 16px' }}>
+              {Array.from({ length: 5 }).map((_, idx) => (
+                <div
+                  key={idx}
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: COL_WIDTHS,
+                    gap: '12px',
+                    alignItems: 'center',
+                    padding: '14px 0',
+                    borderBottom: idx === 4 ? 'none' : '1px solid #252525',
+                  }}
+                >
+                  <Skeleton style={{ height: 14, width: idx % 2 === 0 ? '66%' : '52%' }} />
+                  <Skeleton style={{ height: 16, width: idx % 2 === 0 ? '74%' : '62%' }} />
+                  <Skeleton style={{ height: 14, width: idx % 2 === 0 ? '56%' : '70%' }} />
+                  <Skeleton style={{ height: 14, width: idx % 2 === 0 ? '58%' : '44%' }} />
+                  <Skeleton style={{ height: 24, width: idx % 2 === 0 ? '82%' : '64%', borderRadius: 999 }} />
+                  <Skeleton style={{ height: 18, width: 22, borderRadius: 6 }} />
+                </div>
+              ))}
             </div>
           ) : error ? (
             <div style={{ padding: '60px 20px', textAlign: 'center' }}>
@@ -345,8 +369,6 @@ export default function HistoryPage() {
           <SummaryBar summary={data.summary} />
         </div>
       )}
-
-      <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
     </div>
   )
 }

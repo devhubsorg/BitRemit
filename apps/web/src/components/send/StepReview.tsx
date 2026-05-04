@@ -6,6 +6,7 @@ import { parseUnits } from "viem";
 import type { RecipientResponse } from "../../types/send";
 import { RAIL_CONFIG } from "../../types/send";
 import { useSendRemittance } from "../../hooks/useSendRemittance";
+import { useToast } from "@/hooks/use-toast";
 
 interface StepReviewProps {
   recipient: RecipientResponse;
@@ -67,6 +68,7 @@ export function StepReview({
 }: StepReviewProps) {
   const { address } = useAccount();
   const { sendRemittance, isPending, error, reset } = useSendRemittance();
+  const { toast } = useToast();
   const [posting, setPosting] = useState(false);
 
   const parsed = parseFloat(amount) || 0;
@@ -119,7 +121,13 @@ export function StepReview({
       const { transactionId } = await res.json();
       onSuccessAction(transactionId, hash);
     } catch (e) {
-      console.error(e);
+      const message =
+        e instanceof Error ? e.message : "Backend failed to record transaction";
+      toast({
+        title: "Something went wrong",
+        description: message,
+        variant: "destructive",
+      });
     } finally {
       setPosting(false);
     }

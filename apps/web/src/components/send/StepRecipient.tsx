@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import type { RecipientResponse, PaymentRail } from '../../types/send'
 import { COUNTRY_CODES, RAIL_CONFIG } from '../../types/send'
+import { useToast } from '@/hooks/use-toast'
 
 interface StepRecipientProps {
   selectedRecipient: RecipientResponse | null
@@ -49,6 +50,7 @@ function RailBadge({ rail }: { rail: PaymentRail }) {
 }
 
 export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAction }: StepRecipientProps) {
+  const { toast } = useToast()
   const [recipients, setRecipients] = useState<RecipientResponse[]>([])
   const [search, setSearch] = useState('')
   const [loading, setLoading] = useState(true)
@@ -142,6 +144,11 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
       } catch {
         setRecipients([])
         setLoadError('Failed to load recipients.')
+        toast({
+          title: 'Something went wrong',
+          description: 'Failed to load recipients.',
+          variant: 'destructive',
+        })
       } finally {
         setLoading(false)
       }
@@ -196,7 +203,13 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
       setNewName(''); setNewPhone(''); setNewRail('MPESA')
       handleSelect(created)
     } catch (error) {
-      setFormError(error instanceof Error ? error.message : 'Failed to add recipient. Please try again.')
+      const message = error instanceof Error ? error.message : 'Failed to add recipient. Please try again.'
+      setFormError(message)
+      toast({
+        title: 'Something went wrong',
+        description: message,
+        variant: 'destructive',
+      })
     } finally {
       setSubmitting(false)
     }

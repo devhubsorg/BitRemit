@@ -11,6 +11,7 @@ import {
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
 import { Label } from '../ui/label'
+import { Skeleton } from '../ui/skeleton'
 import type { VaultResponse, VaultHealthResult } from '@/types'
 import {
   useDepositCollateral,
@@ -117,9 +118,13 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
         <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '2px' }}>BTC Locked</p>
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
-          <span style={{ color: '#fff', fontSize: '36px', fontWeight: 700, fontFamily: 'var(--font-syne), sans-serif' }}>
-            {vault.isLoading ? '—' : vault.collateralAmount}
-          </span>
+          {vault.isLoading ? (
+            <Skeleton style={{ width: 140, height: 40 }} />
+          ) : (
+            <span style={{ color: '#fff', fontSize: '36px', fontWeight: 700, fontFamily: 'var(--font-syne), sans-serif' }}>
+              {vault.collateralAmount}
+            </span>
+          )}
           <span style={{ color: '#F7931A', fontSize: '18px', fontWeight: 600 }}>BTC</span>
         </div>
 
@@ -145,16 +150,20 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
               Collateral Ratio
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '8px' }}>
-              <span
-                style={{
-                  fontSize: '32px',
-                  fontWeight: 700,
-                  color: vaultHealth.color,
-                  fontFamily: 'var(--font-syne), sans-serif',
-                }}
-              >
-                {vault.isLoading ? '—' : `${vault.collateralRatio}%`}
-              </span>
+              {vault.isLoading ? (
+                <Skeleton style={{ width: 110, height: 36 }} />
+              ) : (
+                <span
+                  style={{
+                    fontSize: '32px',
+                    fontWeight: 700,
+                    color: vaultHealth.color,
+                    fontFamily: 'var(--font-syne), sans-serif',
+                  }}
+                >
+                  {`${vault.collateralRatio}%`}
+                </span>
+              )}
             </div>
             {/* Progress bar */}
             <div
@@ -188,9 +197,13 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
               Borrowed
             </p>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '6px', marginBottom: '8px' }}>
-              <span style={{ fontSize: '32px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-syne), sans-serif' }}>
-                {vault.isLoading ? '—' : vault.borrowedMUSD}
-              </span>
+              {vault.isLoading ? (
+                <Skeleton style={{ width: 110, height: 36 }} />
+              ) : (
+                <span style={{ fontSize: '32px', fontWeight: 700, color: '#fff', fontFamily: 'var(--font-syne), sans-serif' }}>
+                  {vault.borrowedMUSD}
+                </span>
+              )}
               <span style={{ color: '#F7931A', fontSize: '14px', fontWeight: 600 }}>MUSD</span>
             </div>
             <p style={{ color: '#ef4444', fontSize: '11px' }}>Danger Zone ({'>'}&gt;130%)</p>

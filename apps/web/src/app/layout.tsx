@@ -9,6 +9,7 @@ import { Syne, DM_Sans } from "next/font/google";
 import "./globals.css";
 import "@rainbow-me/rainbowkit/styles.css";
 import Web3ProvidersDynamic from "./Web3ProvidersDynamic";
+import { Toaster } from "@/components/ui/toaster";
 
 const syne = Syne({
   subsets: ["latin"],
@@ -27,13 +28,16 @@ const dmSans = DM_Sans({
 export const metadata: Metadata = {
   title: "BitRemit — Bitcoin remittances for Africa and Southeast Asia",
   description:
-    "Lock BTC, borrow MUSD at 1%, send money home via M-Pesa, GCash, or MTN MoMo.",
+    "Lock BTC, borrow MUSD at 1%, send money home via M-Pesa, GCash, or MTN MoMo",
   openGraph: {
     type: "website",
-    title: "BitRemit",
+    title: "BitRemit — Bitcoin remittances for Africa and Southeast Asia",
     description:
-      "Lock BTC, borrow MUSD at 1%, send money home via M-Pesa, GCash, or MTN MoMo.",
+      "Lock BTC, borrow MUSD at 1%, send money home via M-Pesa, GCash, or MTN MoMo",
     url: process.env.NEXT_PUBLIC_APP_URL ?? "https://bitremit.vercel.app",
+  },
+  icons: {
+    icon: "/favicon.svg",
   },
 };
 
@@ -51,7 +55,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
        * that mutate <body> attributes before React hydrates.
        */}
       <body suppressHydrationWarning>
-        <Web3ProvidersDynamic>{children}</Web3ProvidersDynamic>
+        <Web3ProvidersDynamic>
+          {children}
+          <Toaster />
+        </Web3ProvidersDynamic>
       </body>
     </html>
   );
