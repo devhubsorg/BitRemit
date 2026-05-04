@@ -7,6 +7,7 @@ import { isAddress } from "viem";
 import { useAccount, useChainId, useDisconnect, useSignMessage } from "wagmi";
 import { useEffect, useRef, useState } from "react";
 import { SignInWithWalletMessage } from "@mezo-org/sign-in-with-wallet";
+import { useToast } from "@/hooks/use-toast";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -49,6 +50,7 @@ export function ConnectButton() {
   const [showDisconnect, setShowDisconnect] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [btcAddress, setBtcAddress] = useState<string | undefined>(undefined);
+  const { toast } = useToast();
 
   // True when the connected wallet is a Bitcoin wallet (Unisat / Xverse via
   // OrangeKit). These connectors expose a `getBitcoinProvider` method.
@@ -318,6 +320,11 @@ export function ConnectButton() {
           at: Date.now(),
           cooldownMs: blockedByCheckpoint ? 5 * 60 * 1000 : 15000,
         };
+        toast({
+          title: "Something went wrong",
+          description: message,
+          variant: "destructive",
+        });
         console.error("Wallet authentication failed", error);
       } finally {
         authInFlightRef.current = false;
@@ -332,7 +339,7 @@ export function ConnectButton() {
     return () => {
       cancelled = true;
     };
-  }, [address, btcAddress, chainId, isBitcoinConnector, isConnected, router, signMessageAsync]);
+  }, [address, btcAddress, chainId, isBitcoinConnector, isConnected, router, signMessageAsync, toast]);
 
   // ── Disconnected state ────────────────────────────────────────────────────
   if (!isConnected || !address) {

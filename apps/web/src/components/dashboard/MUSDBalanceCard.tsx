@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation'
 import type { VaultResponse } from '../../types'
+import { Skeleton } from '../ui/skeleton'
 
 interface MUSDBalanceCardProps {
   vault: VaultResponse
@@ -35,17 +36,21 @@ export function MUSDBalanceCard({ vault }: MUSDBalanceCardProps) {
       </p>
 
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
-        <span
-          style={{
-            fontSize: '42px',
-            fontWeight: 800,
-            color: '#fff',
-            fontFamily: 'var(--font-syne), sans-serif',
-            lineHeight: 1,
-          }}
-        >
-          {available}
-        </span>
+        {vault.isLoading ? (
+          <Skeleton style={{ width: 170, height: 44 }} />
+        ) : (
+          <span
+            style={{
+              fontSize: '42px',
+              fontWeight: 800,
+              color: '#fff',
+              fontFamily: 'var(--font-syne), sans-serif',
+              lineHeight: 1,
+            }}
+          >
+            {available}
+          </span>
+        )}
         <span style={{ color: '#F7931A', fontSize: '18px', fontWeight: 700 }}>MUSD</span>
       </div>
 

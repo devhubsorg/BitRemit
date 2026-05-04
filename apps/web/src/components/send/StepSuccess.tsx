@@ -4,6 +4,7 @@ import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { RecipientResponse } from "../../types/send";
 import { RAIL_TO_CURRENCY } from "../../types/send";
+import { useToast } from "@/hooks/use-toast";
 
 interface StepSuccessProps {
   txId: string;
@@ -103,6 +104,7 @@ export function StepSuccess({
   onResetAction,
 }: StepSuccessProps) {
   const router = useRouter();
+  const { toast } = useToast();
   const [txStatus, setTxStatus] = useState<TxStatus>("PENDING");
   const [checkIn, setCheckIn] = useState(false); // checkmark animation trigger
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -124,6 +126,14 @@ export function StepSuccess({
     const t = setTimeout(() => setCheckIn(true), 100);
     return () => clearTimeout(t);
   }, []);
+
+  useEffect(() => {
+    toast({
+      title: "Transfer sent!",
+      description: `${recipient.name} will receive ${currInfo.code} ${fiatAmount}`,
+      variant: "default",
+    });
+  }, [currInfo.code, fiatAmount, recipient.name, toast]);
 
   // Poll transaction status every 3 seconds
   useEffect(() => {

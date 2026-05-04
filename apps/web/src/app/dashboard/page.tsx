@@ -10,11 +10,14 @@ import { MUSDBalanceCard } from '@/components/dashboard/MUSDBalanceCard'
 import { QuickStats } from '@/components/dashboard/QuickStats'
 import { RecentTransactionsTable } from '@/components/dashboard/RecentTransactionsTable'
 import { useVault, useVaultHealth, useTransactions, useStats } from '@/hooks'
+import { useToast } from '@/hooks/use-toast'
 
 export default function DashboardPage() {
   const router = useRouter()
   const { status } = useAccount()
   const mounted = useRef(false)
+  const dangerToastShownRef = useRef(false)
+  const { toast } = useToast()
 
   // Route guard — redirect to landing if wallet disconnected after mount
   useEffect(() => {
@@ -32,6 +35,17 @@ export default function DashboardPage() {
   const vaultHealth = useVaultHealth(vault.collateralRatio)
   const { transactions, isLoading: txLoading, refetchTransactions } = useTransactions(1, 5)
   const stats = useStats()
+
+  useEffect(() => {
+    if (vaultHealth.status === 'danger' && !dangerToastShownRef.current) {
+      toast({
+        title: 'Vault at risk',
+        description: 'Add collateral to avoid liquidation',
+        variant: 'destructive',
+      })
+      dangerToastShownRef.current = true
+    }
+  }, [toast, vaultHealth.status])
 
   // 10-second polling
   useEffect(() => {
@@ -203,7 +217,7 @@ export default function DashboardPage() {
       </main>
 
       <style>{`
-        @media (max-width: 1024px) {
+        @media (max-width: 768px) {
           .dashboard-shell {
             flex-direction: column;
           }

@@ -179,6 +179,7 @@ export default function SendPage() {
       </div>
 
       <div
+        className="send-flow-shell"
         style={{
           flex: 1,
           display: "flex",
@@ -187,6 +188,7 @@ export default function SendPage() {
         }}
       >
         <div
+          className="send-flow-card"
           style={{
             width: "100%",
             maxWidth: "620px",
@@ -249,6 +251,22 @@ export default function SendPage() {
           </AnimatePresence>
         </div>
       </div>
+
+      <style>{`
+        @media (max-width: 768px) {
+          .send-flow-shell {
+            padding: 0 0 24px !important;
+          }
+
+          .send-flow-card {
+            max-width: 100% !important;
+            border-radius: 0 !important;
+            border-left: none !important;
+            border-right: none !important;
+            padding: 18px 14px !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import type { RecipientResponse } from "../../types/send";
 import { RAIL_CONFIG } from "../../types/send";
 import { useVault } from "@/hooks";
+import { useToast } from "@/hooks/use-toast";
 
 interface StepAmountProps {
   recipient: RecipientResponse;
@@ -103,6 +104,7 @@ export function StepAmount({
   onNextAction,
   onBackAction,
 }: StepAmountProps) {
+  const { toast } = useToast();
   const [rawAmount, setRawAmount] = useState("");
   const [rates, setRates] = useState<RateMap>(FALLBACK_RATES);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -120,8 +122,14 @@ export function StepAmount({
     fetch("/api/rates")
       .then((r) => r.json())
       .then((data) => setRates(data))
-      .catch(() => {});
-  }, []);
+      .catch(() => {
+        toast({
+          title: "Something went wrong",
+          description: "Unable to fetch current FX rates. Using fallback rates.",
+          variant: "destructive",
+        });
+      });
+  }, [toast]);
 
   // Debounce amount updates
   useEffect(() => {

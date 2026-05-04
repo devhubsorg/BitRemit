@@ -1,11 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { ConnectButton } from "@/components/ConnectButton";
 import { useAccount } from "wagmi";
 
 export function Navbar() {
   const { isConnected } = useAccount();
+  const pathname = usePathname();
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    setMenuOpen(false);
+  }, [pathname]);
 
   return (
     <nav
@@ -15,7 +23,7 @@ export function Navbar() {
         borderColor: "#30363D",
       }}
     >
-      <div className="mx-auto grid w-full max-w-300 grid-cols-[auto_1fr_auto] items-center">
+      <div className="mx-auto grid w-full max-w-300 grid-cols-[auto_1fr_auto] items-center gap-3 md:gap-0">
         {/* Wordmark */}
         <Link
           href="/"
@@ -54,7 +62,7 @@ export function Navbar() {
         </Link>
 
         {isConnected ? (
-          <div className="flex items-center justify-center gap-8">
+          <div className="hidden items-center justify-center gap-8 md:flex">
             <Link
               href="/dashboard"
               className="text-sm font-medium no-underline transition-colors duration-150"
@@ -81,10 +89,75 @@ export function Navbar() {
           <div />
         )}
 
-        <div className="justify-self-end">
+        <div className="hidden justify-self-end md:block">
           <ConnectButton />
         </div>
+
+        <div className="flex items-center justify-self-end gap-2 md:hidden">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-label="Toggle navigation menu"
+            style={{
+              width: 36,
+              height: 36,
+              borderRadius: 8,
+              border: "1px solid #30363D",
+              background: "rgba(13,17,23,0.9)",
+              color: "#F0F6FC",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              cursor: "pointer",
+            }}
+          >
+            {menuOpen ? "x" : "☰"}
+          </button>
+        </div>
       </div>
+
+      {menuOpen && (
+        <div
+          className="absolute left-0 right-0 top-16 border-b px-[5%] pb-4 pt-3 md:hidden"
+          style={{
+            background: "rgba(13,17,23,0.98)",
+            borderColor: "#30363D",
+          }}
+        >
+          <div className="flex flex-col gap-3">
+            {isConnected ? (
+              <>
+                <Link
+                  href="/dashboard"
+                  className="text-sm font-semibold no-underline"
+                  style={{ color: "#F0F6FC" }}
+                >
+                  Dashboard
+                </Link>
+                <Link
+                  href="/send"
+                  className="text-sm font-semibold no-underline"
+                  style={{ color: "#F0F6FC" }}
+                >
+                  Send
+                </Link>
+                <Link
+                  href="/history"
+                  className="text-sm font-semibold no-underline"
+                  style={{ color: "#F0F6FC" }}
+                >
+                  History
+                </Link>
+              </>
+            ) : null}
+
+            <div>
+              <ConnectButton />
+            </div>
+          </div>
+        </div>
+      )}
     </nav>
   );
 }
