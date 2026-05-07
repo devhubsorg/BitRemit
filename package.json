@@ -18,7 +18,11 @@
   },
   "pnpm": {
     "overrides": {
-      "typescript": "5.9.3"
+      "typescript": "5.9.3",
+      "wagmi": "2.19.5",
+      "viem": "2.47.17",
+      "react": "19.1.0",
+      "react-dom": "19.1.0"
     }
   },
   "engines": {

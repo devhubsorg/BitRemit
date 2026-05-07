@@ -11,8 +11,8 @@ import {
 import { prisma } from "@bitremit/database";
 import { Queue } from "bullmq";
 import { Redis } from "ioredis";
-import BitRemitVaultABI from "../../web3/src/abis/BitRemitVault.json" with { type: "json" };
-import RemittanceRouterABI from "../../web3/src/abis/RemittanceRouter.json" with { type: "json" };
+import { BitRemitVaultABI } from "../../web3/src/abis/BitRemitVault";
+import { RemittanceRouterABI } from "../../web3/src/abis/RemittanceRouter";
 
 const vaultAbi = BitRemitVaultABI as Abi;
 const routerAbi = RemittanceRouterABI as Abi;
@@ -108,6 +108,61 @@ const getCurrency = (railType: string) => {
   if (railType === "GCASH") return "PHP";
   return "USD";
 };
+
+/**
+ * Sends a danger alert to the user via Email and Telegram.
+ * Implements a basic cooldown to avoid spamming the user.
+ */
+async function sendVaultAlert(user: any, ratio: number) {
+  const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+  const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID;
+
+  const message = `🚨 *BitRemit Vault Danger!* \n\n` +
+                 `Your vault collateral ratio has dropped to *${ratio.toFixed(2)}%*.\n` +
+                 `Please add collateral immediately to avoid liquidation.\n\n` +
+                 `🌍 [Manage Vault](https://bitremit.vercel.app/dashboard)`;
+
+  // 1. Send Telegram Alert to User (if linked)
+  if (TELEGRAM_TOKEN && user.telegramChatId) {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: user.telegramChatId,
+          text: message,
+          parse_mode: "Markdown",
+        }),
+      });
+      console.log(`[Vault Monitor] Telegram alert sent to user ${user.address}`);
+    } catch (err) {
+      console.error(`[Vault Monitor] Failed to send Telegram alert:`, err);
+    }
+  }
+
+  // 2. Send Telegram Alert to Admin Channel
+  if (TELEGRAM_TOKEN && ADMIN_CHAT_ID) {
+    try {
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chat_id: ADMIN_CHAT_ID,
+          text: `🚨 *Admin Alert:* Vault for \`${user.address}\` is at *${ratio.toFixed(2)}%*!`,
+          parse_mode: "Markdown",
+        }),
+      });
+    } catch (err) {
+      console.error(`[Vault Monitor] Failed to send Admin alert:`, err);
+    }
+  }
+
+  // 3. Send Email (Placeholder / Mock)
+  if (user.email) {
+    console.log(`[Vault Monitor] Sending Push Notification / Email to ${user.email}...`);
+    // Example: await resend.emails.send({ ... });
+  }
+}
 
 async function syncEvents() {
   if (isPolling) return;
@@ -209,16 +264,25 @@ async function syncEvents() {
           args: [userAddress],
         })) as bigint;
 
-        // Vault Health Monitoring
         const ratioPercent = Number(collateralRatio) / 10;
-        // Ignore MAX_UINT256 (no debt) and 0 debt
         const isNoDebt = collateralRatio === 115792089237316195423570985008687907853269984665640564039457584007913129639935n || borrowedMUSD === 0n;
-        
+
+        // Vault Health Monitoring
+        const existingPosition = await prisma.vaultPosition.findUnique({
+          where: { userId: user.id },
+        });
+
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        let alertSentThisCycle = false;
+
         if (!isNoDebt && ratioPercent < 130) {
-          console.warn(`🚨 [Vault Monitor] Danger! Vault for ${userAddress} has collateral ratio of ${ratioPercent}%.`);
-          console.warn(`   => Sending Push Notification / Email to user...`);
-          console.warn(`   => Dispatching Telegram Alert to admin channel...`);
-          // TODO: Implement actual Email/Telegram API integrations here
+          const shouldAlert = !existingPosition?.lastAlertSentAt || existingPosition.lastAlertSentAt < oneDayAgo;
+
+          if (shouldAlert) {
+            console.warn(`🚨 [Vault Monitor] Danger! Vault for ${userAddress} has collateral ratio of ${ratioPercent}%.`);
+            await sendVaultAlert(user, ratioPercent);
+            alertSentThisCycle = true;
+          }
         }
 
         await prisma.vaultPosition.upsert({
@@ -228,6 +292,7 @@ async function syncEvents() {
             borrowedMUSD: Number(borrowedMUSD) / 1e18,
             collateralRatio: Number(collateralRatio) / 1000,
             lastSyncedBlock: Number(blockNumber),
+            ...(alertSentThisCycle ? { lastAlertSentAt: new Date() } : {}),
           },
           create: {
             userId: user.id,
@@ -235,6 +300,7 @@ async function syncEvents() {
             borrowedMUSD: Number(borrowedMUSD) / 1e18,
             collateralRatio: Number(collateralRatio) / 1000,
             lastSyncedBlock: Number(blockNumber),
+            ...(alertSentThisCycle ? { lastAlertSentAt: new Date() } : {}),
           },
         });
       }

@@ -6,7 +6,7 @@ import {
   type Address,
   type Chain,
 } from "viem";
-import { requireAuth } from "web3";
+import { requireAuth } from "web3/authMiddleware";
 import prisma from "@bitremit/database";
 
 // ---------------------------------------------------------------------------

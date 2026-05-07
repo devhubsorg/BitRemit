@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { verifyToken, SESSION_COOKIE_NAME, unauthorizedResponse } from "web3";
+import { verifyToken, SESSION_COOKIE_NAME, unauthorizedResponse } from "web3/authMiddleware";
 
 export async function GET(request: Request): Promise<Response> {
   const cookieStore = await cookies();

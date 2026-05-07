@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useAccount } from 'wagmi'
@@ -13,27 +13,34 @@ import { useVault, useVaultHealth, useTransactions, useStats } from '@/hooks'
 import { useToast } from '@/hooks/use-toast'
 
 export default function DashboardPage() {
-  const router = useRouter()
-  const { status } = useAccount()
-  const mounted = useRef(false)
-  const dangerToastShownRef = useRef(false)
-  const { toast } = useToast()
+  const [hasMounted, setHasMounted] = useState(false)
 
-  // Route guard — redirect to landing if wallet disconnected after mount
   useEffect(() => {
-    mounted.current = true
+    setHasMounted(true)
   }, [])
 
-  useEffect(() => {
-    if (mounted.current && status === 'disconnected') {
-      router.push('/')
-    }
-  }, [status, router])
+  if (!hasMounted) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#1a1a1a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#F7931A]"></div>
+      </div>
+    )
+  }
+
+  return <DashboardContent />
+}
+
+function DashboardContent() {
+  const { status } = useAccount()
+  const router = useRouter()
+  const dangerToastShownRef = useRef(false)
+  const { toast } = useToast()
 
   // Data hooks
   const vault = useVault()
   const vaultHealth = useVaultHealth(vault.collateralRatio)
-  const { transactions, isLoading: txLoading, refetchTransactions } = useTransactions(1, 5)
+  const txState = useTransactions(1, 5)
+  const { transactions, isLoading: txLoading, refetchTransactions } = txState
   const stats = useStats()
 
   useEffect(() => {
@@ -47,12 +54,18 @@ export default function DashboardPage() {
     }
   }, [toast, vaultHealth.status])
 
-  // 10-second polling
+  useEffect(() => {
+    if (status === 'disconnected') {
+      router.push('/')
+    }
+  }, [status, router])
+
+  // 30-second polling — increased to avoid hammering endpoints
   useEffect(() => {
     const interval = setInterval(() => {
       vault.refetch()
       refetchTransactions()
-    }, 10_000)
+    }, 30_000)
     return () => clearInterval(interval)
   }, [vault, refetchTransactions])
 
@@ -200,17 +213,17 @@ export default function DashboardPage() {
 
           {/* Top row: Vault | Balance + Stats */}
           <div className="dashboard-top-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: '20px', alignItems: 'start' }}>
-            <VaultCard vault={vault} vaultHealth={vaultHealth} />
+            <VaultCard vault={vault as any} vaultHealth={vaultHealth as any} />
 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <MUSDBalanceCard vault={vault} />
-              <QuickStats stats={stats} />
+              <MUSDBalanceCard vault={vault as any} />
+              <QuickStats stats={stats as any} />
             </div>
           </div>
 
           {/* Transactions table — full width */}
           <RecentTransactionsTable
-            transactions={transactions}
+            transactions={transactions as any}
             isLoading={txLoading}
           />
         </div>

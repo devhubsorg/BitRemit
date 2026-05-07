@@ -12,42 +12,25 @@ export interface VaultHealthResult {
   isLoading: boolean;
 }
 
-/**
- * useVaultHealth()
- *
- * Derives the visual health status and messaging for a user's vault
- * based on their on-chain collateralization ratio.
- */
 export function useVaultHealth(customRatio?: number): VaultHealthResult {
   const { collateralRatio: vaultRatio, isLoading } = useVault();
-  
   const collateralRatio = customRatio !== undefined ? customRatio : vaultRatio;
 
-  // Thresholds: safe > 150%, warning 130-150%, danger < 130%
   let status: VaultHealthStatus = "safe";
-  let color = "#22c55e"; // Green
+  let color = "#22c55e";
   let message = "Vault health is good";
 
   if (collateralRatio > 0 && collateralRatio < 130) {
     status = "danger";
-    color = "#ef4444"; // Red
+    color = "#ef4444";
     message = "Liquidation risk — act now!";
   } else if (collateralRatio > 0 && collateralRatio <= 150) {
     status = "warning";
-    color = "#f59e0b"; // Amber
+    color = "#f59e0b";
     message = "Add collateral soon";
-  }
- else if (collateralRatio === 0) {
-    // Edge case: No vault/no collateral
+  } else if (collateralRatio === 0) {
     message = "No active vault found";
   }
 
-  return {
-    status,
-    label: message, // Dashboard UI expects 'label'
-    color,
-    message,
-    collateralRatio,
-    isLoading,
-  };
+  return { status, label: message, color, message, collateralRatio, isLoading };
 }

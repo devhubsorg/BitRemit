@@ -1,4 +1,4 @@
-[
+export const BitRemitVaultABI = [
   {
     "type": "constructor",
     "inputs": [],
@@ -54,7 +54,7 @@
       }
     ],
     "outputs": [],
-    "stateMutability": "nonpayable"
+    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -635,4 +635,4 @@
       }
     ]
   }
-]
+] as const;

@@ -7,6 +7,8 @@ import type { RecipientResponse } from "../../types/send";
 import { RAIL_CONFIG } from "../../types/send";
 import { useSendRemittance } from "../../hooks/useSendRemittance";
 import { useToast } from "@/hooks/use-toast";
+import { useVault, useBorrowMUSD } from "@/hooks";
+import { useBalance } from "wagmi";
 
 interface StepReviewProps {
   recipient: RecipientResponse;
@@ -71,10 +73,25 @@ export function StepReview({
   const { toast } = useToast();
   const [posting, setPosting] = useState(false);
 
+  // 1. Check MUSD Balance and Vault State
+  const MUSD_ADDRESS = process.env.NEXT_PUBLIC_MUSD_ADDRESS as `0x${string}`;
+  const { data: musdBalanceData } = useBalance({
+    address: address,
+    token: MUSD_ADDRESS,
+  });
+  const { maxBorrowable } = useVault();
+  const { borrowMUSD, isPending: isBorrowing } = useBorrowMUSD();
+
   const parsed = parseFloat(amount) || 0;
   const mezoFee = parsed * 0.01;
   const offrampFee = parsed * 0.01;
   const totalNeeded = parsed * 1.02;
+  const totalNeededWei = parseUnits(totalNeeded.toFixed(18), 18);
+
+  const musdBalance = musdBalanceData?.value ?? 0n;
+  const shortfall = totalNeededWei > musdBalance ? totalNeededWei - musdBalance : 0n;
+  const canBorrowShortfall = shortfall > 0 && shortfall <= parseUnits(maxBorrowable, 18);
+
   const currInfo = RAIL_TO_CURRENCY[recipient.paymentRail] ?? {
     code: "USD",
     rate: 1,
@@ -95,18 +112,43 @@ export function StepReview({
     const amountWei = parseUnits(amount, 18);
     const railType = recipient.paymentRail;
 
-    // Triggers Mezo Passport signing modal via wagmi walletClient
-    const hash = await sendRemittance({
-      recipientPhone: recipient.phoneNumber,
-      amount: amountWei,
-      railType,
-    });
-
-    if (!hash) return; // User cancelled or error
-
-    // POST to backend to record and initiate off-ramp job
-    setPosting(true);
     try {
+      // Step A: Auto-Borrow if shortfall exists
+      if (shortfall > 0) {
+        if (!canBorrowShortfall) {
+          toast({
+            title: "Insufficient Liquidity",
+            description: "You don't have enough BTC collateral to borrow this amount.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        toast({
+          title: "Step 1/2: Borrowing MUSD",
+          description: "Generating MUSD against your BTC collateral...",
+        });
+        
+        await borrowMUSD(shortfall);
+        // Wait for confirmation is handled by the hook's receipt tracking
+        toast({
+          title: "Step 1/2 Complete",
+          description: "MUSD minted. Now signing the transfer...",
+        });
+      }
+
+      // Step B: Send Remittance
+      const hash = await sendRemittance({
+        recipientPhone: recipient.phoneNumber,
+        amount: amount,
+        railType,
+        recipientId: recipient.id,
+      });
+
+      if (!hash) return; // User cancelled or error
+
+      // POST to backend to record and initiate off-ramp job
+      setPosting(true);
       const res = await fetch("/api/remittance", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -121,8 +163,7 @@ export function StepReview({
       const { transactionId } = await res.json();
       onSuccessAction(transactionId, hash);
     } catch (e) {
-      const message =
-        e instanceof Error ? e.message : "Backend failed to record transaction";
+      const message = e instanceof Error ? e.message : "Transaction failed";
       toast({
         title: "Something went wrong",
         description: message,
@@ -133,7 +174,7 @@ export function StepReview({
     }
   };
 
-  const isLoading = isPending || posting;
+  const isLoading = isPending || posting || isBorrowing;
 
   return (
     <div style={{ width: "100%" }}>
@@ -239,34 +280,68 @@ export function StepReview({
         </div>
       </div>
 
-      {/* Warning note */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "flex-start",
-          gap: "10px",
-          background: "rgba(247,147,26,0.08)",
-          border: "1px solid rgba(247,147,26,0.2)",
-          borderRadius: "9px",
-          padding: "12px 16px",
-          marginBottom: "20px",
-        }}
-      >
-        <span style={{ color: "#F7931A", fontSize: "16px", flexShrink: 0 }}>
-          ⚠
-        </span>
-        <p
+      {/* Auto-borrow info */}
+      {shortfall > 0 && (
+        <div
           style={{
-            color: "#aaa",
-            fontSize: "12px",
-            lineHeight: 1.6,
-            margin: 0,
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+            background: "rgba(34,197,94,0.1)",
+            border: "1px solid rgba(34,197,94,0.3)",
+            borderRadius: "9px",
+            padding: "12px 16px",
+            marginBottom: "20px",
           }}
         >
-          This will sign a transaction with your wallet. Your BTC collateral
-          remains locked in your vault. This action cannot be undone.
-        </p>
-      </div>
+          <span style={{ color: "#22c55e", fontSize: "16px", flexShrink: 0 }}>
+            ✨
+          </span>
+          <p
+            style={{
+              color: "#fff",
+              fontSize: "12px",
+              lineHeight: 1.6,
+              margin: 0,
+            }}
+          >
+            <strong>Auto-Borrow active:</strong> You are short{" "}
+            {(Number(shortfall) / 1e18).toFixed(2)} MUSD. We will borrow this
+            from your BTC vault automatically.
+          </p>
+        </div>
+      )}
+
+      {/* Warning note */}
+      {!shortfall && (
+        <div
+          style={{
+            display: "flex",
+            alignItems: "flex-start",
+            gap: "10px",
+            background: "rgba(247,147,26,0.08)",
+            border: "1px solid rgba(247,147,26,0.2)",
+            borderRadius: "9px",
+            padding: "12px 16px",
+            marginBottom: "20px",
+          }}
+        >
+          <span style={{ color: "#F7931A", fontSize: "16px", flexShrink: 0 }}>
+            ⚠
+          </span>
+          <p
+            style={{
+              color: "#aaa",
+              fontSize: "12px",
+              lineHeight: 1.6,
+              margin: 0,
+            }}
+          >
+            This will sign a transaction with your wallet. Your BTC collateral
+            remains locked in your vault. This action cannot be undone.
+          </p>
+        </div>
+      )}
 
       {/* Error */}
       {error && (
@@ -319,16 +394,22 @@ export function StepReview({
                 cx="12"
                 cy="12"
                 r="10"
-                stroke="#666"
+                stroke={isBorrowing ? "#22c55e" : "#666"}
                 strokeWidth="3"
                 strokeDasharray="31.4"
                 strokeDashoffset="10"
               />
             </svg>
-            {isPending ? "Signing with wallet..." : "Recording transfer..."}
+            {isBorrowing
+              ? "Borrowing MUSD..."
+              : isPending
+                ? "Signing Transfer..."
+                : "Recording..."}
           </>
         ) : (
-          "✍ Confirm & Sign Wallet"
+          <span>
+            {shortfall > 0 ? "⚡ Borrow & Send" : "✍ Confirm & Sign Wallet"}
+          </span>
         )}
       </button>
 

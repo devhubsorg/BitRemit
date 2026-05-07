@@ -16,6 +16,7 @@ import type { VaultResponse, VaultHealthResult } from '@/types'
 import {
   useDepositCollateral,
   useRepayMUSD,
+  useBorrowMUSD,
   useApproveTBTC,
   useApproveMUSD,
 } from '@/hooks'
@@ -29,14 +30,18 @@ interface VaultCardProps {
 export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
   const [addCollateralOpen, setAddCollateralOpen] = useState(false)
   const [repayOpen, setRepayOpen] = useState(false)
+  const [borrowOpen, setBorrowOpen] = useState(false)
   const [depositAmount, setDepositAmount] = useState('')
   const [repayAmount, setRepayAmount] = useState('')
+  const [borrowAmount, setBorrowAmount] = useState('')
 
   const { depositCollateral, isPending: isDepositing } = useDepositCollateral({ onSuccess: () => vault.refetch() })
   const { approveTBTC, isPending: isApprovingTBTC } = useApproveTBTC()
   
   const { repayMUSD, isPending: isRepaying } = useRepayMUSD({ onSuccess: () => vault.refetch() })
   const { approveMUSD, isPending: isApprovingMUSD } = useApproveMUSD()
+
+  const { borrowMUSD, isPending: isBorrowing } = useBorrowMUSD({ onSuccess: () => vault.refetch() })
 
   const ratioPercent = Math.min((vault.collateralRatio / 300) * 100, 100)
 
@@ -61,6 +66,18 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
       await repayMUSD(amount);
       setRepayAmount('')
       setRepayOpen(false)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleBorrow = async () => {
+    if (!borrowAmount) return;
+    try {
+      const amount = parseUnits(borrowAmount, 18);
+      await borrowMUSD(amount);
+      setBorrowAmount('')
+      setBorrowOpen(false)
     } catch (e) {
       console.error(e)
     }
@@ -115,24 +132,19 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
           YOUR VAULT
         </p>
 
-        <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '2px' }}>BTC Locked</p>
+        <p style={{ color: '#aaa', fontSize: '13px', marginBottom: '2px' }}>BTC Locked (Mocked)</p>
 
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '8px', marginBottom: '4px' }}>
           {vault.isLoading ? (
             <Skeleton style={{ width: 140, height: 40 }} />
           ) : (
             <span style={{ color: '#fff', fontSize: '36px', fontWeight: 700, fontFamily: 'var(--font-syne), sans-serif' }}>
-              {vault.collateralAmount}
+              {(vault as any).displayCollateralAmount ? (Number((vault as any).displayCollateralAmount) / 1e18).toFixed(4) : vault.collateralAmount}
             </span>
           )}
-          <span style={{ color: '#F7931A', fontSize: '18px', fontWeight: 600 }}>BTC</span>
+          <span style={{ color: '#F7931A', fontSize: '18px', fontWeight: 600 }}>Mezo BTC</span>
         </div>
 
-        {vault.collateralChangeUsd !== 0 && (
-          <p style={{ color: '#22c55e', fontSize: '13px', marginBottom: '24px' }}>
-            +${vault.collateralChangeUsd.toFixed(2)} ({vault.collateralChangePercent.toFixed(1)}%) today
-          </p>
-        )}
 
         {/* Divider row */}
         <div
@@ -211,24 +223,38 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
         </div>
 
         {/* Action buttons */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
           <button
             onClick={() => setAddCollateralOpen(true)}
             style={{
               background: '#3a3a3a',
               border: 'none',
               borderRadius: '8px',
-              padding: '14px',
+              padding: '14px 10px',
               color: '#fff',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'background 0.2s',
             }}
-            onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = '#4a4a4a')}
-            onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.background = '#3a3a3a')}
           >
-            Add Collateral
+            Add BTC
+          </button>
+          <button
+            onClick={() => setBorrowOpen(true)}
+            style={{
+              background: '#F7931A',
+              border: 'none',
+              borderRadius: '8px',
+              padding: '14px 10px',
+              color: '#000',
+              fontSize: '13px',
+              fontWeight: 700,
+              cursor: 'pointer',
+              transition: 'opacity 0.2s',
+            }}
+          >
+            Borrow MUSD
           </button>
           <button
             onClick={() => setRepayOpen(true)}
@@ -236,17 +262,15 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
               background: '#3a3a3a',
               border: 'none',
               borderRadius: '8px',
-              padding: '14px',
+              padding: '14px 10px',
               color: '#fff',
-              fontSize: '14px',
+              fontSize: '13px',
               fontWeight: 600,
               cursor: 'pointer',
               transition: 'background 0.2s',
             }}
-            onMouseEnter={(e) => ((e.target as HTMLButtonElement).style.background = '#4a4a4a')}
-            onMouseLeave={(e) => ((e.target as HTMLButtonElement).style.background = '#3a3a3a')}
           >
-            Repay Loan
+            Repay
           </button>
         </div>
       </div>
@@ -259,12 +283,12 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
           </DialogHeader>
           <div style={{ padding: '8px 0' }}>
             <Label htmlFor="deposit-amount" style={{ color: '#aaa', fontSize: '13px' }}>
-              Amount (tBTC)
+              Amount (Mezo BTC)
             </Label>
             <Input
               id="deposit-amount"
               type="number"
-              placeholder="0.01"
+              placeholder="0.001"
               value={depositAmount}
               onChange={(e) => setDepositAmount(e.target.value)}
               style={{
@@ -339,6 +363,53 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Borrow MUSD Dialog */}
+      <Dialog open={borrowOpen} onOpenChangeAction={setBorrowOpen}>
+        <DialogContent style={{ background: '#2a2a2a', border: '1px solid #3a3a3a', color: '#fff' }}>
+          <DialogHeader>
+            <DialogTitle style={{ color: '#fff' }}>Borrow MUSD</DialogTitle>
+          </DialogHeader>
+          <div style={{ padding: '8px 0' }}>
+            <Label htmlFor="borrow-amount" style={{ color: '#aaa', fontSize: '13px' }}>
+              Amount (MUSD)
+            </Label>
+            <p style={{ color: '#888', fontSize: '12px', marginTop: '4px' }}>
+              Max borrowable: {vault.maxBorrowable} MUSD
+            </p>
+            <Input
+              id="borrow-amount"
+              type="number"
+              placeholder="100"
+              value={borrowAmount}
+              onChange={(e) => setBorrowAmount(e.target.value)}
+              style={{
+                background: '#1a1a1a',
+                border: '1px solid #3a3a3a',
+                color: '#fff',
+                marginTop: '8px',
+              }}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setBorrowOpen(false)}
+              style={{ borderColor: '#3a3a3a', color: '#aaa', background: 'transparent' }}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleBorrow}
+              disabled={isBorrowing || !borrowAmount}
+              style={{ background: '#F7931A', color: '#000', fontWeight: 700, border: 'none' }}
+            >
+              {isBorrowing ? 'Borrowing…' : 'Borrow MUSD'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
+
   )
 }

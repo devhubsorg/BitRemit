@@ -8,7 +8,7 @@ import { Syne, DM_Sans } from "next/font/google";
 
 import "./globals.css";
 import "@rainbow-me/rainbowkit/styles.css";
-import Web3ProvidersDynamic from "./Web3ProvidersDynamic";
+import { Web3Providers } from "./providers";
 import { Toaster } from "@/components/ui/toaster";
 
 const syne = Syne({
@@ -55,10 +55,10 @@ export default function RootLayout({ children }: { children: ReactNode }) {
        * that mutate <body> attributes before React hydrates.
        */}
       <body suppressHydrationWarning>
-        <Web3ProvidersDynamic>
+        <Web3Providers>
           {children}
           <Toaster />
-        </Web3ProvidersDynamic>
+        </Web3Providers>
       </body>
     </html>
   );

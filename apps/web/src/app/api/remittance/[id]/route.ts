@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "web3";
+import { requireAuth } from "web3/authMiddleware";
 import prisma from "@bitremit/database";
 
 // ---------------------------------------------------------------------------

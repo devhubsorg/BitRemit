@@ -1,8 +1,10 @@
 "use client";
+
 import { useState, useEffect, useRef } from "react";
 import { useWriteContract, useWaitForTransactionReceipt } from "wagmi";
-import { keccak256, toBytes, parseUnits, type Address } from "viem";
-import { RemittanceRouterABI } from "@/lib/abis/RemittanceRouter";
+import type { Address } from "viem";
+import { keccak256, toBytes, parseUnits } from "viem";
+import { RemittanceRouterABI } from "../abis/RemittanceRouter";
 
 const ROUTER_ADDRESS = process.env.NEXT_PUBLIC_ROUTER_ADDRESS as Address;
 
@@ -13,13 +15,20 @@ interface SendRemittanceParams {
   recipientId: string;
 }
 
+/**
+ * Hook for sending remittances via the BitRemit RemittanceRouter.
+ * Automatically hashes the phone, converts units, and records the transaction on success.
+ */
 export function useSendRemittance() {
   const { writeContractAsync, data: txHash, isPending: isWritePending, error, reset } = useWriteContract();
   const [isRecording, setIsRecording] = useState(false);
   const pendingData = useRef<SendRemittanceParams | null>(null);
 
-  const { isLoading: isConfirming, isSuccess, isError: isWaitError } = useWaitForTransactionReceipt({ hash: txHash });
+  const { isLoading: isConfirming, isSuccess, isError: isWaitError } = useWaitForTransactionReceipt({
+    hash: txHash,
+  });
 
+  // Automatically POST to backend when transaction is confirmed
   useEffect(() => {
     if (isSuccess && txHash && pendingData.current) {
       const recordTransaction = async () => {
@@ -67,5 +76,15 @@ export function useSendRemittance() {
     }
   };
 
-  return { sendRemittance, isPending: isWritePending, isConfirming, isRecording, isSuccess, isError: !!error || isWaitError, error, txHash, reset };
+  return {
+    sendRemittance,
+    isPending: isWritePending,
+    isConfirming,
+    isRecording,
+    isSuccess,
+    isError: !!error || isWaitError,
+    error,
+    txHash,
+    reset,
+  };
 }

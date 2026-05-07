@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { SESSION_COOKIE_NAME } from "web3";
+import { SESSION_COOKIE_NAME } from "web3/authMiddleware";
 
 export async function POST(): Promise<NextResponse> {
   const response = NextResponse.json({ ok: true });
