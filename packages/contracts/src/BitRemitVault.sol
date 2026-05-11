@@ -103,7 +103,7 @@ contract BitRemitVault is
     function borrowMUSD(uint256 amount) external whenNotPaused nonReentrant {
         require(amount > 0, "Amount must be > 0");
         // Flash loan guard bypassed if mocking entirely, but kept for consistency
-        // require(sameBlockDeposit[msg.sender] < block.number, "Flash loan guard: same block deposit");
+        require(sameBlockDeposit[msg.sender] < block.number, "Flash loan guard: same block deposit");
 
         uint256 fee = (amount * borrowFeeRate) / FEE_PRECISION;
         uint256 debtIncrease = amount + fee;
