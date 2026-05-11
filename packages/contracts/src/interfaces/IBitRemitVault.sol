@@ -21,7 +21,7 @@ interface IBitRemitVault {
         address _priceOracle
     ) external;
 
-    function depositCollateral(uint256 amount) external;
+    function depositCollateral(uint256 amount) external payable;
     function borrowMUSD(uint256 amount) external;
     function repayMUSD(uint256 amount) external;
     function withdrawCollateral(uint256 amount) external;

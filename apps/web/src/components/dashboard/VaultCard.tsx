@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { useAccount, usePublicClient } from 'wagmi'
 import {
   Dialog,
   DialogContent,
@@ -19,11 +20,12 @@ import {
   useBorrowMUSD,
   useApproveTBTC,
   useApproveMUSD,
+  useMintTBTC,
 } from '@/hooks'
 import { parseUnits } from 'viem'
 
 interface VaultCardProps {
-  vault: VaultResponse & { refetch: () => void; isLoading: boolean }
+  vault: VaultResponse
   vaultHealth: VaultHealthResult
 }
 
@@ -34,6 +36,9 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
   const [depositAmount, setDepositAmount] = useState('')
   const [repayAmount, setRepayAmount] = useState('')
   const [borrowAmount, setBorrowAmount] = useState('')
+  
+  const { address } = useAccount()
+  const publicClient = usePublicClient()
 
   const { depositCollateral, isPending: isDepositing } = useDepositCollateral({ onSuccess: () => vault.refetch() })
   const { approveTBTC, isPending: isApprovingTBTC } = useApproveTBTC()
@@ -42,6 +47,7 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
   const { approveMUSD, isPending: isApprovingMUSD } = useApproveMUSD()
 
   const { borrowMUSD, isPending: isBorrowing } = useBorrowMUSD({ onSuccess: () => vault.refetch() })
+  const { mintTBTC, isPending: isMinting } = useMintTBTC({ onSuccess: () => vault.refetch() })
 
   const ratioPercent = Math.min((vault.collateralRatio / 300) * 100, 100)
 
@@ -49,7 +55,10 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
     if (!depositAmount) return;
     try {
       const amount = parseUnits(depositAmount, 18);
-      await approveTBTC(amount);
+      const hash = await approveTBTC(amount);
+      if (hash && publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
       await depositCollateral(amount);
       setDepositAmount('')
       setAddCollateralOpen(false)
@@ -62,7 +71,10 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
     if (!repayAmount) return;
     try {
       const amount = parseUnits(repayAmount, 18);
-      await approveMUSD(amount);
+      const hash = await approveMUSD(amount);
+      if (hash && publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash });
+      }
       await repayMUSD(amount);
       setRepayAmount('')
       setRepayOpen(false)
@@ -78,6 +90,15 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
       await borrowMUSD(amount);
       setBorrowAmount('')
       setBorrowOpen(false)
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleMint = async () => {
+    if (!address) return;
+    try {
+      await mintTBTC(address, parseUnits('0.1', 18));
     } catch (e) {
       console.error(e)
     }
@@ -139,10 +160,10 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
             <Skeleton style={{ width: 140, height: 40 }} />
           ) : (
             <span style={{ color: '#fff', fontSize: '36px', fontWeight: 700, fontFamily: 'var(--font-syne), sans-serif' }}>
-              {(vault as any).displayCollateralAmount ? (Number((vault as any).displayCollateralAmount) / 1e18).toFixed(4) : vault.collateralAmount}
+              {Number(vault.displayCollateralAmount).toFixed(4)}
             </span>
           )}
-          <span style={{ color: '#F7931A', fontSize: '18px', fontWeight: 600 }}>Mezo BTC</span>
+          <span style={{ color: '#F7931A', fontSize: '18px', fontWeight: 600 }}>tBTC</span>
         </div>
 
 
@@ -173,7 +194,7 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
                     fontFamily: 'var(--font-syne), sans-serif',
                   }}
                 >
-                  {`${vault.collateralRatio}%`}
+                  {vault.collateralRatio > 1000 ? '> 1000%' : `${vault.collateralRatio.toFixed(1)}%`}
                 </span>
               )}
             </div>
@@ -282,9 +303,22 @@ export function VaultCard({ vault, vaultHealth }: VaultCardProps) {
             <DialogTitle style={{ color: '#fff' }}>Add Collateral</DialogTitle>
           </DialogHeader>
           <div style={{ padding: '8px 0' }}>
-            <Label htmlFor="deposit-amount" style={{ color: '#aaa', fontSize: '13px' }}>
-              Amount (Mezo BTC)
-            </Label>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Label htmlFor="deposit-amount" style={{ color: '#aaa', fontSize: '13px' }}>
+                Amount (tBTC)
+              </Label>
+              <Button 
+                variant="outline" 
+                onClick={handleMint}
+                disabled={isMinting}
+                style={{ height: '24px', fontSize: '11px', color: '#F7931A', padding: '0 8px' }}
+              >
+                {isMinting ? 'Minting...' : 'Mint Test tBTC'}
+              </Button>
+            </div>
+            <p style={{ color: '#888', fontSize: '11px', marginTop: '4px' }}>
+              Available: {vault.tbtcBalance} tBTC
+            </p>
             <Input
               id="deposit-amount"
               type="number"

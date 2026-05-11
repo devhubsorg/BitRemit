@@ -4,6 +4,7 @@ import { formatUnits, type Address } from "viem";
 import { BitRemitVaultABI } from "@/lib/abis/BitRemitVault";
 
 const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as Address;
+const TBTC_ADDRESS = process.env.NEXT_PUBLIC_TBTC_ADDRESS as Address;
 
 export interface VaultResult {
   collateralAmount: string;
@@ -14,6 +15,7 @@ export interface VaultResult {
   collateralChangePercent: number;
   collateralChangeUsd: number;
   maxBorrowable: string;
+  tbtcBalance: string;
   isLoading: boolean;
   refetch: () => void;
 }
@@ -21,6 +23,7 @@ export interface VaultResult {
 export function useVault(): VaultResult {
   const { address, isConnected } = useAccount();
   const { data: balanceData } = useBalance({ address });
+  const { data: tbtcBalanceData } = useBalance({ address, token: TBTC_ADDRESS });
 
   const { data, isLoading, refetch } = useReadContracts({
     contracts: [
@@ -68,6 +71,7 @@ export function useVault(): VaultResult {
     collateralChangePercent: 0,
     collateralChangeUsd: 0,
     maxBorrowable: formatUnits(maxBorrowableRaw ?? 0n, 18),
+    tbtcBalance: formatUnits(tbtcBalanceData?.value ?? 0n, 18),
     isLoading,
     refetch,
   };

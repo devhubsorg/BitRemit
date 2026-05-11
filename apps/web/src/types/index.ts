@@ -2,12 +2,14 @@ export type VaultHealth = 'safe' | 'warning' | 'danger'
 
 export interface VaultResponse {
   collateralAmount: string     // tBTC amount (e.g. "0.05")
+  displayCollateralAmount: string // Effective collateral (deposited + wallet)
   borrowedMUSD: string         // MUSD borrowed (e.g. "1250")
   collateralRatio: number      // e.g. 185
   collateralUsdValue: number   // USD value of collateral
   collateralChangePercent: number // 24h % change e.g. 2.4
   collateralChangeUsd: number     // 24h USD change e.g. 124.50
   maxBorrowable: string
+  tbtcBalance: string
   isLoading: boolean
   refetch: () => void
 }

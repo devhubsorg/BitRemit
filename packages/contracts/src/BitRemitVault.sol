@@ -57,6 +57,18 @@ contract BitRemitVault is
     }
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
+    
+    function setTBtcToken(address _tBtcToken) external onlyOwner {
+        tBtcToken = _tBtcToken;
+    }
+
+    function setMusdToken(address _musdToken) external onlyOwner {
+        musdToken = _musdToken;
+    }
+
+    function setPriceOracle(address _priceOracle) external onlyOwner {
+        priceOracle = _priceOracle;
+    }
 
     function pause() external onlyOwner {
         _pause();

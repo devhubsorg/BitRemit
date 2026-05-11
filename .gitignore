@@ -7,6 +7,6 @@ out/
 cache/
 broadcast/
 .DS_Store
-packages/database/generated/
+packages/database/prisma/client/
 .vercel
 .env*.local

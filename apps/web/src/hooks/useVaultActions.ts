@@ -7,6 +7,22 @@ import { useVault } from "./useVault";
 
 const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as Address;
 const MUSD_ADDRESS = process.env.NEXT_PUBLIC_MUSD_ADDRESS as Address;
+const TBTC_ADDRESS = process.env.NEXT_PUBLIC_TBTC_ADDRESS as Address;
+const ROUTER_ADDRESS = process.env.NEXT_PUBLIC_ROUTER_ADDRESS as Address;
+
+const mockTbtcAbi = [
+  ...erc20Abi,
+  {
+    "type": "function",
+    "name": "mint",
+    "inputs": [
+      { "name": "to", "type": "address", "internalType": "address" },
+      { "name": "amount", "type": "uint256", "internalType": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+] as const;
 
 export interface UseVaultActionProps {
   onSuccess?: () => void;
@@ -21,12 +37,12 @@ export function useDepositCollateral({ onSuccess }: UseVaultActionProps = {}) {
   }, [isSuccess, onSuccess]);
 
   const depositCollateral = async (amount: bigint) => {
-    await writeContractAsync({
+    return await writeContractAsync({
       address: VAULT_ADDRESS,
       abi: BitRemitVaultABI,
       functionName: "depositCollateral",
-      args: [0n],
-      value: amount,
+      args: [amount],
+      value: 0n, // Using tBTC ERC20 path
     });
   };
 
@@ -45,7 +61,7 @@ export function useBorrowMUSD({ onSuccess }: UseVaultActionProps = {}) {
   const borrowMUSD = async (amount: bigint) => {
     const maxBig = BigInt(Math.floor(Number(maxBorrowable) * 1e18));
     if (amount > maxBig) throw new Error(`Borrow amount exceeds maximum borrowable`);
-    await writeContractAsync({ address: VAULT_ADDRESS, abi: BitRemitVaultABI, functionName: "borrowMUSD", args: [amount] });
+    return await writeContractAsync({ address: VAULT_ADDRESS, abi: BitRemitVaultABI, functionName: "borrowMUSD", args: [amount] });
   };
 
   return { borrowMUSD, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
@@ -59,11 +75,26 @@ export function useApproveMUSD({ onSuccess }: UseVaultActionProps = {}) {
     if (isSuccess && onSuccess) onSuccess();
   }, [isSuccess, onSuccess]);
 
-  const approveMUSD = async (amount: bigint) => {
-    await writeContractAsync({ address: MUSD_ADDRESS, abi: erc20Abi, functionName: "approve", args: [VAULT_ADDRESS, amount] });
+  const approveMUSD = async (amount: bigint, spender: Address = VAULT_ADDRESS) => {
+    return await writeContractAsync({ address: MUSD_ADDRESS, abi: erc20Abi, functionName: "approve", args: [spender, amount] });
   };
 
   return { approveMUSD, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
+}
+
+export function useApproveMUSDForRouter({ onSuccess }: UseVaultActionProps = {}) {
+  const { writeContractAsync, data: txHash, isPending: isWritePending, isError: isWriteError } = useWriteContract();
+  const { isLoading: isWaiting, isSuccess, isError: isWaitError } = useWaitForTransactionReceipt({ hash: txHash });
+
+  useEffect(() => {
+    if (isSuccess && onSuccess) onSuccess();
+  }, [isSuccess, onSuccess]);
+
+  const approveRouter = async (amount: bigint) => {
+    return await writeContractAsync({ address: MUSD_ADDRESS, abi: erc20Abi, functionName: "approve", args: [ROUTER_ADDRESS, amount] });
+  };
+
+  return { approveRouter, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
 }
 
 export function useRepayMUSD({ onSuccess }: UseVaultActionProps = {}) {
@@ -75,7 +106,7 @@ export function useRepayMUSD({ onSuccess }: UseVaultActionProps = {}) {
   }, [isSuccess, onSuccess]);
 
   const repayMUSD = async (amount: bigint) => {
-    await writeContractAsync({ address: VAULT_ADDRESS, abi: BitRemitVaultABI, functionName: "repayMUSD", args: [amount] });
+    return await writeContractAsync({ address: VAULT_ADDRESS, abi: BitRemitVaultABI, functionName: "repayMUSD", args: [amount] });
   };
 
   return { repayMUSD, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
@@ -90,19 +121,40 @@ export function useWithdrawCollateral({ onSuccess }: UseVaultActionProps = {}) {
   }, [isSuccess, onSuccess]);
 
   const withdrawCollateral = async (amount: bigint) => {
-    await writeContractAsync({ address: VAULT_ADDRESS, abi: BitRemitVaultABI, functionName: "withdrawCollateral", args: [amount] });
+    return await writeContractAsync({ address: VAULT_ADDRESS, abi: BitRemitVaultABI, functionName: "withdrawCollateral", args: [amount] });
   };
 
   return { withdrawCollateral, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
 }
 
-/** tBTC approval no-op — kept for interface compatibility */
+/** Real tBTC approval for collateral deposit */
 export function useApproveTBTC({ onSuccess }: UseVaultActionProps = {}) {
-  return {
-    approveTBTC: async (_amount: bigint) => { if (onSuccess) onSuccess(); },
-    isPending: false,
-    isSuccess: true,
-    isError: false,
-    txHash: "0x" as `0x${string}`,
+  const { writeContractAsync, data: txHash, isPending: isWritePending, isError: isWriteError } = useWriteContract();
+  const { isLoading: isWaiting, isSuccess, isError: isWaitError } = useWaitForTransactionReceipt({ hash: txHash });
+
+  useEffect(() => {
+    if (isSuccess && onSuccess) onSuccess();
+  }, [isSuccess, onSuccess]);
+
+  const approveTBTC = async (amount: bigint) => {
+    return await writeContractAsync({ address: TBTC_ADDRESS, abi: erc20Abi, functionName: "approve", args: [VAULT_ADDRESS, amount] });
   };
+
+  return { approveTBTC, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
+}
+
+/** Mint Mock tBTC for testing */
+export function useMintTBTC({ onSuccess }: UseVaultActionProps = {}) {
+  const { writeContractAsync, data: txHash, isPending: isWritePending, isError: isWriteError } = useWriteContract();
+  const { isLoading: isWaiting, isSuccess, isError: isWaitError } = useWaitForTransactionReceipt({ hash: txHash });
+
+  useEffect(() => {
+    if (isSuccess && onSuccess) onSuccess();
+  }, [isSuccess, onSuccess]);
+
+  const mintTBTC = async (to: Address, amount: bigint) => {
+    return await writeContractAsync({ address: TBTC_ADDRESS, abi: mockTbtcAbi, functionName: "mint", args: [to, amount] });
+  };
+
+  return { mintTBTC, isPending: isWritePending || isWaiting, isSuccess, isError: isWriteError || isWaitError, txHash };
 }

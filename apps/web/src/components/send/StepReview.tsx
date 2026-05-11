@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import { useAccount } from "wagmi";
+import { useAccount, usePublicClient } from "wagmi";
 import { parseUnits } from "viem";
 import type { RecipientResponse } from "../../types/send";
 import { RAIL_CONFIG } from "../../types/send";
 import { useSendRemittance } from "../../hooks/useSendRemittance";
 import { useToast } from "@/hooks/use-toast";
-import { useVault, useBorrowMUSD } from "@/hooks";
+import { useVault, useBorrowMUSD, useApproveMUSDForRouter } from "@/hooks";
 import { useBalance } from "wagmi";
 
 interface StepReviewProps {
@@ -69,6 +69,7 @@ export function StepReview({
   onBackAction,
 }: StepReviewProps) {
   const { address } = useAccount();
+  const publicClient = usePublicClient();
   const { sendRemittance, isPending, error, reset } = useSendRemittance();
   const { toast } = useToast();
   const [posting, setPosting] = useState(false);
@@ -81,6 +82,7 @@ export function StepReview({
   });
   const { maxBorrowable } = useVault();
   const { borrowMUSD, isPending: isBorrowing } = useBorrowMUSD();
+  const { approveRouter, isPending: isApproving } = useApproveMUSDForRouter();
 
   const parsed = parseFloat(amount) || 0;
   const mezoFee = parsed * 0.01;
@@ -129,15 +131,31 @@ export function StepReview({
           description: "Generating MUSD against your BTC collateral...",
         });
         
-        await borrowMUSD(shortfall);
-        // Wait for confirmation is handled by the hook's receipt tracking
+        const borrowHash = await borrowMUSD(shortfall);
+        if (borrowHash && publicClient) {
+          await publicClient.waitForTransactionReceipt({ hash: borrowHash });
+        }
         toast({
-          title: "Step 1/2 Complete",
-          description: "MUSD minted. Now signing the transfer...",
+          title: "Step 1/3 Complete",
+          description: "MUSD minted. Now approving the transfer...",
         });
       }
 
-      // Step B: Send Remittance
+      // Step B: Approve Router
+      toast({
+        title: shortfall > 0 ? "Step 2/3: Approving" : "Step 1/2: Approving",
+        description: "Giving the router permission to send your MUSD...",
+      });
+      const approveHash = await approveRouter(amountWei);
+      if (approveHash && publicClient) {
+        await publicClient.waitForTransactionReceipt({ hash: approveHash });
+      }
+
+      // Step C: Send Remittance
+      toast({
+        title: shortfall > 0 ? "Step 3/3: Sending" : "Step 2/2: Sending",
+        description: "Finalizing your remittance...",
+      });
       const hash = await sendRemittance({
         recipientPhone: recipient.phoneNumber,
         amount: amount,
