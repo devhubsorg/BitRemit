@@ -6,7 +6,7 @@ import { verifySiweMessage } from "viem/siwe";
 import { SignInWithWalletMessage } from "@mezo-org/sign-in-with-wallet";
 import { predictOrangeKitAddress } from "@mezo-org/orangekit-smart-account";
 import prisma from "@bitremit/database";
-import { SESSION_COOKIE_NAME } from "web3";
+import { SESSION_COOKIE_NAME } from "web3/authMiddleware";
 import { getJwtSecret } from "@/lib/jwt";
 import { consumeNonce } from "@/lib/nonceStore";
 
@@ -332,12 +332,18 @@ export async function POST(request: Request): Promise<NextResponse> {
       return response;
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : String(error);
+      const isDbError = errorMsg.includes("database") || errorMsg.includes("prisma") || errorMsg.includes("connect") || errorMsg.includes("ECONNREFUSED");
       console.error(
         "[auth/verify] Failed to issue Bitcoin wallet session:",
         error,
       );
       return NextResponse.json(
-        { error: "Failed to issue wallet session", detail: errorMsg },
+        {
+          error: isDbError
+            ? "Database unavailable — cannot create session. Please check your DATABASE_URL."
+            : "Failed to issue wallet session",
+          detail: errorMsg,
+        },
         { status: 500 },
       );
     }
@@ -394,9 +400,15 @@ export async function POST(request: Request): Promise<NextResponse> {
     return response;
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
+    const isDbError = errorMsg.includes("database") || errorMsg.includes("prisma") || errorMsg.includes("connect") || errorMsg.includes("ECONNREFUSED") || errorMsg.includes("invalid port");
     console.error("[auth/verify] Failed to issue session:", error);
     return NextResponse.json(
-      { error: "Failed to issue wallet session", detail: errorMsg },
+      {
+        error: isDbError
+          ? "Database unavailable — cannot create session. Please check your DATABASE_URL."
+          : "Failed to issue wallet session",
+        detail: errorMsg,
+      },
       { status: 500 },
     );
   }

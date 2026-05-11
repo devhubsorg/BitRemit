@@ -1,47 +1,50 @@
 "use client";
-
 import { useVault } from "./useVault";
 
-export type VaultHealthStatus = "healthy" | "warning" | "danger";
+export type VaultHealthStatus = "safe" | "warning" | "danger";
 
 export interface VaultHealthResult {
   status: VaultHealthStatus;
+  label: string;
   color: string;
   message: string;
   collateralRatio: number;
   isLoading: boolean;
 }
 
-const MAX_UINT256 = 115792089237316195423570985008687907853269984665640564039457584007913129639935n;
-
-export function useVaultHealth(): VaultHealthResult {
-  const { collateralRatio: rawRatio, borrowedMUSD, isLoading } = useVault();
-
-  let collateralRatio = 0;
+/**
+ * useVaultHealth()
+ *
+ * Derives the visual health status and messaging for a user's vault
+ * based on their on-chain collateralization ratio.
+ */
+export function useVaultHealth(customRatio?: number): VaultHealthResult {
+  const { collateralRatio: vaultRatio, isLoading } = useVault();
   
-  if (borrowedMUSD === 0n || rawRatio === MAX_UINT256) {
-    collateralRatio = Infinity;
-  } else {
-    // Contract returns raw precision 1000 for 100% (e.g. 1500 = 150%)
-    collateralRatio = Number(rawRatio) / 10;
-  }
+  const collateralRatio = customRatio !== undefined ? customRatio : vaultRatio;
 
-  let status: VaultHealthStatus = "healthy";
-  let color = "#22c55e"; // green
+  // Thresholds: safe > 150%, warning 130-150%, danger < 130%
+  let status: VaultHealthStatus = "safe";
+  let color = "#22c55e"; // Green
   let message = "Vault health is good";
 
-  if (collateralRatio < 130) {
+  if (collateralRatio > 0 && collateralRatio < 130) {
     status = "danger";
-    color = "#ef4444"; // red
+    color = "#ef4444"; // Red
     message = "Liquidation risk — act now!";
-  } else if (collateralRatio <= 150) {
+  } else if (collateralRatio > 0 && collateralRatio <= 150) {
     status = "warning";
-    color = "#f59e0b"; // amber
+    color = "#f59e0b"; // Amber
     message = "Add collateral soon";
+  }
+ else if (collateralRatio === 0) {
+    // Edge case: No vault/no collateral
+    message = "No active vault found";
   }
 
   return {
     status,
+    label: message, // Dashboard UI expects 'label'
     color,
     message,
     collateralRatio,

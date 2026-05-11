@@ -146,9 +146,17 @@ export function StepAmount({
   const totalNeeded = amount * 1.02;
   const recipientGets = amount * rate;
   const availableMUSD = parseFloat(vault.borrowedMUSD) || 0;
-  const isInsufficient = amount > 0 && totalNeeded > availableMUSD;
-  const shortage = (totalNeeded - availableMUSD).toFixed(2);
+  const maxBorrowable = parseFloat(vault.maxBorrowable) || 0;
+  
+  // They can proceed if (Balance + Max Borrowable) >= Total Needed
+  const totalAvailable = availableMUSD + maxBorrowable;
+  const isInsufficient = amount > 0 && totalNeeded > totalAvailable;
+  
+  // shortage is what they are missing even AFTER borrowing everything possible
+  const shortage = Math.max(0, totalNeeded - totalAvailable).toFixed(2);
   const canProceed = amount >= 1 && !isInsufficient;
+  
+  const needsBorrow = amount > 0 && totalNeeded > availableMUSD && !isInsufficient;
 
   const rail = RAIL_CONFIG[recipient.paymentRail];
 
@@ -333,28 +341,38 @@ export function StepAmount({
                 {availableMUSD.toLocaleString()} MUSD
               </strong>
             </span>
-            {amount > 0 &&
-              (isInsufficient ? (
-                <span
-                  style={{
-                    color: "#ef4444",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                  }}
-                >
-                  Insufficient MUSD - you need {shortage} more
-                </span>
-              ) : (
-                <span
-                  style={{
-                    color: "#22c55e",
-                    fontSize: "13px",
-                    fontWeight: 600,
-                  }}
-                >
-                  ✓ Sufficient
-                </span>
-              ))}
+              {amount > 0 &&
+                (isInsufficient ? (
+                  <span
+                    style={{
+                      color: "#ef4444",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    Insufficient Collateral - need {shortage} more
+                  </span>
+                ) : needsBorrow ? (
+                  <span
+                    style={{
+                      color: "#F7931A",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ⚠ Will auto-borrow from BTC
+                  </span>
+                ) : (
+                  <span
+                    style={{
+                      color: "#22c55e",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                    }}
+                  >
+                    ✓ Sufficient
+                  </span>
+                ))}
           </>
         )}
       </div>

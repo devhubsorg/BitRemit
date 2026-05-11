@@ -10,23 +10,31 @@ import { RainbowKitProvider } from "@rainbow-me/rainbowkit";
 import { injectedWallet, metaMaskWallet } from "@rainbow-me/rainbowkit/wallets";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
-import { WagmiProvider } from "wagmi";
+import { WagmiProvider, createConfig, http } from "wagmi";
+import { mainnet } from "wagmi/chains";
 
-const wagmiConfig = getConfig({
-  appName: "BitRemit",
-  wallets: [
-    {
-      groupName: "Bitcoin Wallets",
-      wallets: [xverseWalletMezoTestnet, unisatWalletMezoTestnet],
-    },
-    {
-      groupName: "EVM Wallets",
-      wallets: [injectedWallet, metaMaskWallet],
-    },
-  ],
-  mezoNetwork: "testnet",
-  walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? "",
+const dummyConfig = createConfig({
+  chains: [mainnet],
+  transports: { [mainnet.id]: http() },
 });
+
+const wagmiConfig = typeof window !== "undefined" 
+  ? getConfig({
+      appName: "BitRemit",
+      wallets: [
+        {
+          groupName: "Bitcoin Wallets",
+          wallets: [xverseWalletMezoTestnet, unisatWalletMezoTestnet],
+        },
+        {
+          groupName: "EVM Wallets",
+          wallets: [injectedWallet, metaMaskWallet],
+        },
+      ],
+      mezoNetwork: "testnet",
+      walletConnectProjectId: process.env.NEXT_PUBLIC_WC_PROJECT_ID ?? "",
+    })
+  : null;
 
 // Instantiate QueryClient inside a useState so it is created once per
 // component mount and not shared between server requests.
@@ -44,7 +52,7 @@ export function Web3Providers({ children }: { children: ReactNode }) {
   );
 
   return (
-    <WagmiProvider config={wagmiConfig}>
+    <WagmiProvider config={wagmiConfig ?? dummyConfig}>
       <QueryClientProvider client={queryClient}>
         <RainbowKitProvider initialChain={mezoTestnet}>
           {children}

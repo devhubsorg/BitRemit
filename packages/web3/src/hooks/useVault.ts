@@ -1,16 +1,28 @@
 "use client";
+import { useAccount, useReadContracts, useBalance } from "wagmi";
+import { formatUnits, type Address } from "viem";
+import { BitRemitVaultABI } from "../abis/BitRemitVault";
 
-import { useAccount, useReadContracts } from "wagmi";
-import type { Abi, Address } from "viem";
-import BitRemitVaultABIJson from "../abis/BitRemitVault.json";
+const VAULT_ADDRESS = process.env.NEXT_PUBLIC_VAULT_ADDRESS as Address;
 
-const BitRemitVaultABI = BitRemitVaultABIJson as Abi;
+export interface VaultResult {
+  collateralAmount: string;
+  displayCollateralAmount: string;
+  borrowedMUSD: string;
+  collateralRatio: number;
+  collateralUsdValue: number;
+  collateralChangePercent: number;
+  collateralChangeUsd: number;
+  maxBorrowable: string;
+  isLoading: boolean;
+  refetch: () => void;
+}
 
-const VAULT_ADDRESS = process.env
-  .NEXT_PUBLIC_VAULT_ADDRESS as Address;
-
-export function useVault() {
+export function useVault(): VaultResult {
   const { address, isConnected } = useAccount();
+  const { data: balanceData } = useBalance({
+    address: address,
+  });
 
   const { data, isLoading, refetch } = useReadContracts({
     contracts: [
@@ -41,14 +53,27 @@ export function useVault() {
   const vaultsResult = data?.[0].result as
     | readonly [bigint, bigint, bigint]
     | undefined;
-  const collateralRatio = data?.[1].result as bigint | undefined;
-  const maxBorrowable = data?.[2].result as bigint | undefined;
+  const collateralRatioRaw = data?.[1].result as bigint | undefined;
+  const maxBorrowableRaw = data?.[2].result as bigint | undefined;
+
+  const depositedCollateral = vaultsResult?.[0] ?? 0n;
+  const walletBalance = balanceData?.value ?? 0n;
+  const totalEffectiveCollateral = depositedCollateral + walletBalance;
+
+  // MOCK values for USD calculation for now
+  // In production, these should come from a price feed or API
+  const mockBtcPrice = 65000;
+  const collateralUsdValue = Number(formatUnits(totalEffectiveCollateral, 18)) * mockBtcPrice;
 
   return {
-    collateralAmount: vaultsResult?.[0] ?? 0n,
-    borrowedMUSD: vaultsResult?.[1] ?? 0n,
-    collateralRatio: collateralRatio ?? 0n,
-    maxBorrowable: maxBorrowable ?? 0n,
+    collateralAmount: formatUnits(depositedCollateral, 18),
+    displayCollateralAmount: formatUnits(totalEffectiveCollateral, 18),
+    borrowedMUSD: formatUnits(vaultsResult?.[1] ?? 0n, 18),
+    collateralRatio: collateralRatioRaw ? Number(collateralRatioRaw) / 10 : 0,
+    collateralUsdValue,
+    collateralChangePercent: 0, // Placeholder
+    collateralChangeUsd: 0, // Placeholder
+    maxBorrowable: formatUnits(maxBorrowableRaw ?? 0n, 18),
     isLoading,
     refetch,
   };

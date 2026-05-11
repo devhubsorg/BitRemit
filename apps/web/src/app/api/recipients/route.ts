@@ -10,7 +10,7 @@ import {
 } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import twilio from "twilio";
-import { requireAuth } from "web3";
+import { requireAuth } from "web3/authMiddleware";
 import prisma from "@bitremit/database";
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,9 @@
   Creating an optimized production build ...
 Turbopack build encountered 1 warnings:
 ./apps/web/next.config.ts
+✓ Compiled successfully in 83s
 Encountered unexpected file in NFT list
+  Running TypeScript ...
 A file was traced that indicates that the whole project was traced unintentionally. Somewhere in the import trace below, there are:
 - filesystem operations (like path.join, path.resolve or fs.readFile), or
 - very dynamic requires (like require('./' + foo)).
@@ -20,23 +22,22 @@ To resolve this, you can
 Import trace:
   App Route:
     ./apps/web/next.config.ts
-    ./packages/database/generated/client/index.js
+    ./packages/database/prisma/client/index.js
     ./packages/database/src/client.ts
     ./apps/web/src/app/api/transactions/route.ts
 
 
-✓ Compiled successfully in 56s
-  Running TypeScript ...
-  Finished TypeScript in 41s ...
+  Finished TypeScript in 53s ...
   Collecting page data using 3 workers ...
   Generating static pages using 3 workers (0/17) ...
   Generating static pages using 3 workers (4/17) 
+[@gelatonetwork/relay-sdk] This package is deprecated. Please migrate to @gelatocloud/gasless. See https://www.npmjs.com/package/@gelatocloud/gasless
   Generating static pages using 3 workers (8/17) 
   Generating static pages using 3 workers (12/17) 
-✓ Generating static pages using 3 workers (17/17) in 3.5s
+✓ Generating static pages using 3 workers (17/17) in 3.3s
   Finalizing page optimization ...
 
-Route (app)
+Route (app)                Revalidate  Expire
 ┌ ƒ /
 ├ ○ /_not-found
 ├ ƒ /api/auth/logout
@@ -45,7 +46,7 @@ Route (app)
 ├ ƒ /api/auth/verify
 ├ ƒ /api/indexer/sync
 ├ ƒ /api/offramp/callback
-├ ƒ /api/rates
+├ ○ /api/rates                     1h      1y
 ├ ƒ /api/recipients
 ├ ƒ /api/remittance
 ├ ƒ /api/remittance/[id]

@@ -4,6 +4,11 @@
   "private": true,
   "main": "src/index.ts",
   "types": "src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./authMiddleware": "./src/authMiddleware.ts",
+    "./hooks/*": "./src/hooks/*.ts"
+  },
   "dependencies": {
     "@mezo-org/passport": "^0.17.2",
     "jose": "^6.2.2"

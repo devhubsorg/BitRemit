@@ -1,5 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
-import { requireAuth } from "web3";
+import { requireAuth } from "web3/authMiddleware";
 import prisma from "@bitremit/database";
 
 export interface TransactionsQuery {
@@ -60,79 +60,87 @@ export function buildRecipientInitials(name: string): string {
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await requireAuth(request);
-  if (auth instanceof Response) return auth;
-  const { userId } = auth;
+  try {
+    const auth = await requireAuth(request);
+    if (auth instanceof Response) return auth;
+    const { userId } = auth;
 
-  const { searchParams } = new URL(request.url);
+    const { searchParams } = new URL(request.url);
 
-  const query = parseTransactionsQuery(searchParams);
-  const { page, limit } = query;
-  const where = buildTransactionsWhere(userId, query);
+    const query = parseTransactionsQuery(searchParams);
+    const { page, limit } = query;
+    const where = buildTransactionsWhere(userId, query);
 
-  const skip = (page - 1) * limit;
+    const skip = (page - 1) * limit;
 
-  const [transactions, total] = await Promise.all([
-    prisma.transaction.findMany({
-      where,
-      include: {
-        recipient: { select: { name: true, phoneNumber: true } },
+    const [transactions, total] = await Promise.all([
+      prisma.transaction.findMany({
+        where,
+        include: {
+          recipient: { select: { name: true, phoneNumber: true } },
+        },
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+      }),
+      prisma.transaction.count({ where }),
+    ]);
+
+    const monthStart = new Date();
+    monthStart.setDate(1);
+    monthStart.setHours(0, 0, 0, 0);
+
+    const [monthlyTxs, railCounts] = await Promise.all([
+      prisma.transaction.aggregate({
+        where: { senderId: userId, createdAt: { gte: monthStart } },
+        _sum: { musdAmount: true, feeAmount: true },
+      }),
+      prisma.transaction.groupBy({
+        by: ["railType"],
+        where: { senderId: userId, createdAt: { gte: monthStart } },
+        _count: { railType: true },
+        orderBy: { _count: { railType: "desc" } },
+        take: 1,
+      }),
+    ]);
+
+    const shaped = transactions.map((tx) => ({
+      id: tx.id,
+      createdAt: tx.createdAt.toISOString(),
+      confirmedAt: null,
+      completedAt: tx.completedAt?.toISOString() ?? null,
+      recipient: {
+        name: tx.recipient.name,
+        phoneNumber: tx.recipient.phoneNumber,
+        initials: buildRecipientInitials(tx.recipient.name),
       },
-      orderBy: { createdAt: "desc" },
-      skip,
-      take: limit,
-    }),
-    prisma.transaction.count({ where }),
-  ]);
+      railType: tx.railType,
+      musdAmount: tx.musdAmount.toString(),
+      fiatAmount: tx.fiatAmount.toString(),
+      fiatCurrency: tx.fiatCurrency,
+      status: tx.status,
+      txHash: tx.txHash ?? null,
+      blockNumber: tx.blockNumber ?? null,
+      railReference: tx.railReference ?? null,
+      feeAmount: tx.feeAmount.toString(),
+    }));
 
-  const monthStart = new Date();
-  monthStart.setDate(1);
-  monthStart.setHours(0, 0, 0, 0);
-
-  const [monthlyTxs, railCounts] = await Promise.all([
-    prisma.transaction.aggregate({
-      where: { senderId: userId, createdAt: { gte: monthStart } },
-      _sum: { musdAmount: true, feeAmount: true },
-    }),
-    prisma.transaction.groupBy({
-      by: ["railType"],
-      where: { senderId: userId, createdAt: { gte: monthStart } },
-      _count: { railType: true },
-      orderBy: { _count: { railType: "desc" } },
-      take: 1,
-    }),
-  ]);
-
-  const shaped = transactions.map((tx) => ({
-    id: tx.id,
-    createdAt: tx.createdAt.toISOString(),
-    confirmedAt: null,
-    completedAt: tx.completedAt?.toISOString() ?? null,
-    recipient: {
-      name: tx.recipient.name,
-      phoneNumber: tx.recipient.phoneNumber,
-      initials: buildRecipientInitials(tx.recipient.name),
-    },
-    railType: tx.railType,
-    musdAmount: tx.musdAmount.toString(),
-    fiatAmount: tx.fiatAmount.toString(),
-    fiatCurrency: tx.fiatCurrency,
-    status: tx.status,
-    txHash: tx.txHash ?? null,
-    blockNumber: tx.blockNumber ?? null,
-    railReference: tx.railReference ?? null,
-    feeAmount: tx.feeAmount.toString(),
-  }));
-
-  return NextResponse.json({
-    transactions: shaped,
-    total,
-    page,
-    totalPages: Math.ceil(total / limit),
-    summary: {
-      totalSentMUSD: monthlyTxs._sum.musdAmount?.toString() ?? "0",
-      totalFeesMUSD: monthlyTxs._sum.feeAmount?.toString() ?? "0",
-      mostUsedRail: railCounts[0]?.railType ?? null,
-    },
-  });
+    return NextResponse.json({
+      transactions: shaped,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit),
+      summary: {
+        totalSentMUSD: monthlyTxs._sum.musdAmount?.toString() ?? "0",
+        totalFeesMUSD: monthlyTxs._sum.feeAmount?.toString() ?? "0",
+        mostUsedRail: railCounts[0]?.railType ?? null,
+      },
+    });
+  } catch (err) {
+    console.error("[GET /api/transactions] error:", err);
+    return NextResponse.json(
+      { error: "Failed to fetch transactions", transactions: [], total: 0, page: 1, totalPages: 0 },
+      { status: 500 }
+    );
+  }
 }
