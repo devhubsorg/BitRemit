@@ -125,6 +125,8 @@ exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   address: 'address',
   phoneNumber: 'phoneNumber',
+  email: 'email',
+  telegramChatId: 'telegramChatId',
   siweSession: 'siweSession',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -148,6 +150,7 @@ exports.Prisma.VaultPositionScalarFieldEnum = {
   borrowedMUSD: 'borrowedMUSD',
   collateralRatio: 'collateralRatio',
   lastSyncedBlock: 'lastSyncedBlock',
+  lastAlertSentAt: 'lastAlertSentAt',
   updatedAt: 'updatedAt'
 };
 

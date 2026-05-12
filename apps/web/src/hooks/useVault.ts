@@ -15,6 +15,7 @@ export interface VaultResult {
   collateralChangePercent: number;
   collateralChangeUsd: number;
   maxBorrowable: string;
+  maxBorrowableRaw: bigint;
   tbtcBalance: string;
   isLoading: boolean;
   refetch: () => void;
@@ -23,7 +24,10 @@ export interface VaultResult {
 export function useVault(): VaultResult {
   const { address, isConnected } = useAccount();
   const { data: balanceData } = useBalance({ address });
-  const { data: tbtcBalanceData } = useBalance({ address, token: TBTC_ADDRESS });
+  const { data: tbtcBalanceData } = useBalance({
+    address,
+    token: TBTC_ADDRESS,
+  });
 
   const { data, isLoading, refetch } = useReadContracts({
     contracts: [
@@ -49,7 +53,9 @@ export function useVault(): VaultResult {
     query: { enabled: isConnected && !!address },
   });
 
-  const vaultsResult = data?.[0].result as readonly [bigint, bigint, bigint] | undefined;
+  const vaultsResult = data?.[0].result as
+    | readonly [bigint, bigint, bigint]
+    | undefined;
   const collateralRatioRaw = data?.[1].result as bigint | undefined;
   const maxBorrowableRaw = data?.[2].result as bigint | undefined;
 
@@ -71,6 +77,7 @@ export function useVault(): VaultResult {
     collateralChangePercent: 0,
     collateralChangeUsd: 0,
     maxBorrowable: formatUnits(maxBorrowableRaw ?? 0n, 18),
+    maxBorrowableRaw: maxBorrowableRaw ?? 0n,
     tbtcBalance: formatUnits(tbtcBalanceData?.value ?? 0n, 18),
     isLoading,
     refetch,
