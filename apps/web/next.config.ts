@@ -36,6 +36,12 @@ const wagmiEntry = require.resolve("wagmi/package.json");
 const wagmiRoot = path.dirname(wagmiEntry);
 
 const nextConfig: NextConfig = {
+  // Tell Next.js output tracing to include the Prisma engine binary from the
+  // monorepo's custom generated client path so Vercel bundles it correctly.
+  outputFileTracingIncludes: {
+    "**/*": ["../../packages/database/generated/client/**"],
+  },
+
   transpilePackages: [
     "@mezo-org/orangekit",
     "@mezo-org/orangekit-smart-account",
