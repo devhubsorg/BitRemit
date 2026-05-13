@@ -192,10 +192,18 @@ export function StepRecipient({ selectedRecipient, setRecipientAction, setStepAc
         }),
       })
       if (!res.ok) {
-        if (res.status === 401) {
-          throw new Error('Session expired. Reconnect wallet and sign again.')
+        let apiMessage = ''
+        try {
+          const payload = await res.json() as { error?: string }
+          apiMessage = payload.error ?? ''
+        } catch {
+          // Ignore parse errors and fall back to generic messages below.
         }
-        throw new Error('Failed to add recipient')
+
+        if (res.status === 401) {
+          throw new Error(apiMessage || 'Session expired. Reconnect wallet and sign again.')
+        }
+        throw new Error(apiMessage || 'Failed to add recipient')
       }
       const created: RecipientResponse = await res.json()
       setRecipients(prev => [created, ...prev])

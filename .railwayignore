@@ -1,0 +1,35 @@
+# Heavy build artifacts & caches
+
+node_modules/
+.next/
+.turbo/
+dist/
+build/
+out/
+cache/
+
+# Web app — not needed for Railway services
+
+apps/web/
+
+# Solidity contract libs (huge, not needed at runtime)
+
+packages/contracts/lib/
+packages/contracts/out/
+packages/contracts/cache/
+
+# Database generated client (rebuilt on Railway)
+
+packages/database/generated/
+
+# Dev / CI only
+
+scratch/
+audit/
+_.test.ts
+_.test.js
+_.spec.ts
+_.spec.js
+coverage/
+.vercel/
+.github/

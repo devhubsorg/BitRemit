@@ -1,5 +1,5 @@
 [build]
-buildCommand = "pnpm --filter @bitremit/database run db:generate && pnpm --filter @bitremit/blockchain run build"
+buildCommand = "pnpm --filter @bitremit/database run db:generate && pnpm --filter @bitremit/database run db:push && pnpm --filter @bitremit/blockchain run build"
 
 [deploy]
 startCommand = "pnpm --filter @bitremit/blockchain start"

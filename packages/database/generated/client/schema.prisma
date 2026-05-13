@@ -4,9 +4,8 @@ datasource db {
 }
 
 generator client {
-  provider      = "prisma-client-js"
-  output        = "../generated/client"
-  binaryTargets = ["native", "linux-musl-openssl-3.0.x"] // native = local dev, linux-musl = Railway/Docker
+  provider = "prisma-client-js"
+  output   = "../generated/client"
 }
 
 // =============================================================================
@@ -32,10 +31,12 @@ enum TxStatus {
 // =============================================================================
 
 model User {
-  id          String  @id @default(cuid())
-  address     String  @unique // EVM wallet address (checksummed)
-  phoneNumber String? @unique // E.164 format e.g. +254712345678
-  siweSession String? // JWT issued after SIWE sign-in
+  id             String  @id @default(cuid())
+  address        String  @unique // EVM wallet address (checksummed)
+  phoneNumber    String? @unique // E.164 format e.g. +254712345678
+  email          String? @unique
+  telegramChatId String? @unique
+  siweSession    String? // JWT issued after SIWE sign-in
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -63,12 +64,13 @@ model Recipient {
 }
 
 model VaultPosition {
-  id               String  @id @default(cuid())
-  userId           String  @unique // 1-to-1 with User
-  collateralAmount Decimal @db.Decimal(36, 18) // BTC deposited (18 decimal precision)
-  borrowedMUSD     Decimal @db.Decimal(36, 18) // mUSD borrowed against collateral
-  collateralRatio  Decimal @db.Decimal(10, 4) // e.g. 1.5000 = 150%
+  id               String    @id @default(cuid())
+  userId           String    @unique // 1-to-1 with User
+  collateralAmount Decimal   @db.Decimal(36, 18) // BTC deposited (18 decimal precision)
+  borrowedMUSD     Decimal   @db.Decimal(36, 18) // mUSD borrowed against collateral
+  collateralRatio  Decimal   @db.Decimal(10, 4) // e.g. 1.5000 = 150%
   lastSyncedBlock  Int // last block the indexer confirmed this position on-chain
+  lastAlertSentAt  DateTime? // timestamp of the last danger alert sent
 
   updatedAt DateTime @updatedAt
 

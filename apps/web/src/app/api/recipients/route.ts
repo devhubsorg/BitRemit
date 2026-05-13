@@ -32,6 +32,20 @@ const REGISTRY_ADDRESS =
 
 const REGISTRY_ABI = [
   {
+    name: "authorizedRegistrars",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "", type: "address" }],
+    outputs: [{ name: "", type: "bool" }],
+  },
+  {
+    name: "getAddress",
+    type: "function",
+    stateMutability: "view",
+    inputs: [{ name: "phoneHash", type: "bytes32" }],
+    outputs: [{ name: "", type: "address" }],
+  },
+  {
     name: "registerRecipient",
     type: "function",
     stateMutability: "nonpayable",
@@ -119,136 +133,224 @@ export async function POST(request: NextRequest) {
   // userId is available but recipients are not user-scoped in the current
   // schema — the Recipient is protocol-global, keyed by phone hash.
 
-  // ── Parse & validate body ───────────────────────────────────────────────
-  let rawBody: unknown;
   try {
-    rawBody = await request.json();
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
-  }
+    // ── Parse & validate body ─────────────────────────────────────────────
+    let rawBody: unknown;
+    try {
+      rawBody = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+    }
 
-  const parsed = recipientSchema.safeParse(rawBody);
-  if (!parsed.success) {
-    const phoneIssue = parsed.error.issues.find((i) =>
-      i.path.includes("phoneNumber"),
-    );
-    if (phoneIssue) {
+    const parsed = recipientSchema.safeParse(rawBody);
+    if (!parsed.success) {
+      const phoneIssue = parsed.error.issues.find((i) =>
+        i.path.includes("phoneNumber"),
+      );
+      if (phoneIssue) {
+        return NextResponse.json(
+          {
+            error:
+              "Invalid phone number format. Must be E.164 (e.g. +254712345678)",
+          },
+          { status: 400 },
+        );
+      }
       return NextResponse.json(
-        {
-          error:
-            "Invalid phone number format. Must be E.164 (e.g. +254712345678)",
-        },
+        { error: "Invalid request body", details: parsed.error.flatten() },
         { status: 400 },
       );
     }
+
+    const { name, phoneNumber, paymentRail } = parsed.data;
+
+    // ── Hash phone number (mirrors on-chain RecipientRegistry key) ────────
+    const phoneHash = keccak256(toUtf8Bytes(phoneNumber)) as `0x${string}`;
+
+    // ── Generate custodial wallet ──────────────────────────────────────────
+    // NOTE: The private key produced here is NOT persisted. In production this
+    // should be stored encrypted in a KMS/HSM before the DB write.
+    const custodialWallet = Wallet.createRandom();
+    const custodialAddress = custodialWallet.address as Address;
+
+    // ── Call RecipientRegistry.registerRecipient on-chain ────────────────
+    const signerPrivateKey = process.env.BACKEND_SIGNER_PRIVATE_KEY;
+    if (!signerPrivateKey) {
+      return NextResponse.json(
+        { error: "Server configuration error" },
+        { status: 500 },
+      );
+    }
+
+    const account = privateKeyToAccount(signerPrivateKey as `0x${string}`);
+    const walletClient = createWalletClient({
+      account,
+      chain: MEZO_TESTNET,
+      transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
+    });
+
+    // Pair a public client for awaiting the tx receipt.
+    const publicClient = createPublicClient({
+      chain: MEZO_TESTNET,
+      transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
+    });
+
+    try {
+      const simulation = await publicClient.simulateContract({
+        account,
+        address: REGISTRY_ADDRESS,
+        abi: REGISTRY_ABI,
+        functionName: "registerRecipient",
+        args: [phoneHash, custodialAddress],
+      });
+
+      const txHash = await walletClient.writeContract({
+        ...simulation.request,
+      });
+
+      await publicClient.waitForTransactionReceipt({ hash: txHash });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      if (msg.toLowerCase().includes("already registered")) {
+        // Recover from partial failures: if chain is already registered but DB
+        // row is missing (previous request failed after on-chain success),
+        // rebuild the DB row from on-chain address and return it.
+        const existing = await prisma.recipient.findFirst({
+          where: {
+            OR: [{ phoneHash }, { phoneNumber }],
+          },
+        });
+
+        if (existing) {
+          return NextResponse.json(existing, { status: 200 });
+        }
+
+        const onChainAddress = (await publicClient.readContract({
+          address: REGISTRY_ADDRESS,
+          abi: REGISTRY_ABI,
+          functionName: "getAddress",
+          args: [phoneHash],
+        })) as Address;
+
+        if (!onChainAddress || onChainAddress === "0x0000000000000000000000000000000000000000") {
+          return NextResponse.json(
+            { error: "Phone number already registered" },
+            { status: 409 },
+          );
+        }
+
+        const recovered = await prisma.recipient.create({
+          data: {
+            name,
+            phoneNumber,
+            phoneHash,
+            custodialAddress: onChainAddress,
+            paymentRail,
+          },
+        });
+
+        return NextResponse.json(recovered, { status: 201 });
+      }
+
+      if (msg.toLowerCase().includes("not authorized registrar")) {
+        return NextResponse.json(
+          {
+            error:
+              "Backend signer is not authorized to register recipients on-chain.",
+          },
+          { status: 500 },
+        );
+      }
+
+      if (msg.toLowerCase().includes("insufficient funds")) {
+        return NextResponse.json(
+          {
+            error:
+              "Backend signer has insufficient BTC for gas on Mezo testnet.",
+          },
+          { status: 502 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "Could not register recipient on-chain right now. Please retry in a few seconds.",
+        },
+        { status: 502 },
+      );
+    }
+
+    // ── Persist to DB ──────────────────────────────────────────────────────
+    let recipient;
+    try {
+      recipient = await prisma.recipient.create({
+        data: {
+          name,
+          phoneNumber,
+          phoneHash,
+          custodialAddress,
+          paymentRail,
+        },
+      });
+    } catch (err: unknown) {
+      if (
+        err !== null &&
+        typeof err === "object" &&
+        "code" in err &&
+        err.code === "P2002"
+      ) {
+        const existing = await prisma.recipient.findFirst({
+          where: {
+            OR: [{ phoneHash }, { phoneNumber }],
+          },
+        });
+
+        if (existing) {
+          return NextResponse.json(existing, { status: 200 });
+        }
+
+        return NextResponse.json(
+          { error: "Phone number already registered" },
+          { status: 409 },
+        );
+      }
+
+      return NextResponse.json(
+        {
+          error:
+            "Database is temporarily unavailable. Please retry in a few seconds.",
+        },
+        { status: 503 },
+      );
+    }
+
+    // ── Send welcome SMS via Twilio ────────────────────────────────────────
+    const accountSid = process.env.TWILIO_ACCOUNT_SID;
+    const authToken = process.env.TWILIO_AUTH_TOKEN;
+    const fromNumber = process.env.TWILIO_PHONE_NUMBER;
+
+    if (accountSid && authToken && fromNumber) {
+      try {
+        const twilioClient = twilio(accountSid, authToken);
+        await twilioClient.messages.create({
+          from: fromNumber,
+          to: phoneNumber,
+          body: `Your family set up a BitRemit account for you. You'll receive money via ${RAIL_NAMES[paymentRail]}.`,
+        });
+      } catch {
+        // SMS failure is non-fatal — the recipient record is already created.
+        // Log the error in production monitoring rather than aborting.
+        console.error("[BitRemit] Twilio welcome SMS failed for", phoneNumber);
+      }
+    }
+
+    return NextResponse.json(recipient, { status: 201 });
+  } catch (err: unknown) {
+    console.error("[BitRemit] Recipient creation failed", err);
     return NextResponse.json(
-      { error: "Invalid request body", details: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const { name, phoneNumber, paymentRail } = parsed.data;
-
-  // ── Hash phone number (mirrors on-chain RecipientRegistry key) ──────────
-  const phoneHash = keccak256(toUtf8Bytes(phoneNumber)) as `0x${string}`;
-
-  // ── Generate custodial wallet ────────────────────────────────────────────
-  // NOTE: The private key produced here is NOT persisted. In production this
-  // should be stored encrypted in a KMS/HSM before the DB write.
-  const custodialWallet = Wallet.createRandom();
-  const custodialAddress = custodialWallet.address as Address;
-
-  // ── Call RecipientRegistry.registerRecipient on-chain ──────────────────
-  const signerPrivateKey = process.env.BACKEND_SIGNER_PRIVATE_KEY;
-  if (!signerPrivateKey) {
-    return NextResponse.json(
-      { error: "Server configuration error" },
+      { error: "Could not create recipient right now. Please retry." },
       { status: 500 },
     );
   }
-
-  const account = privateKeyToAccount(signerPrivateKey as `0x${string}`);
-  const walletClient = createWalletClient({
-    account,
-    chain: MEZO_TESTNET,
-    transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
-  });
-
-  // Pair a public client for awaiting the tx receipt.
-  const publicClient = createPublicClient({
-    chain: MEZO_TESTNET,
-    transport: http(process.env.MEZO_RPC_URL ?? "https://rpc.test.mezo.org"),
-  });
-
-  try {
-    const txHash = await walletClient.writeContract({
-      address: REGISTRY_ADDRESS,
-      abi: REGISTRY_ABI,
-      functionName: "registerRecipient",
-      args: [phoneHash, custodialAddress],
-    });
-
-    await publicClient.waitForTransactionReceipt({ hash: txHash });
-  } catch (err: unknown) {
-    // Surface a 409 early if the phone hash is already registered on-chain
-    // (contract reverts with recognisable message).
-    const msg = err instanceof Error ? err.message : String(err);
-    if (msg.toLowerCase().includes("already registered")) {
-      return NextResponse.json(
-        { error: "Phone number already registered" },
-        { status: 409 },
-      );
-    }
-    throw err;
-  }
-
-  // ── Persist to DB ────────────────────────────────────────────────────────
-  let recipient;
-  try {
-    recipient = await prisma.recipient.create({
-      data: {
-        name,
-        phoneNumber,
-        phoneHash,
-        custodialAddress,
-        paymentRail,
-      },
-    });
-  } catch (err: unknown) {
-    // P2002 = Prisma unique constraint violation (phone already in DB).
-    if (
-      err !== null &&
-      typeof err === "object" &&
-      "code" in err &&
-      err.code === "P2002"
-    ) {
-      return NextResponse.json(
-        { error: "Phone number already registered" },
-        { status: 409 },
-      );
-    }
-    throw err;
-  }
-
-  // ── Send welcome SMS via Twilio ──────────────────────────────────────────
-  const accountSid = process.env.TWILIO_ACCOUNT_SID;
-  const authToken = process.env.TWILIO_AUTH_TOKEN;
-  const fromNumber = process.env.TWILIO_PHONE_NUMBER;
-
-  if (accountSid && authToken && fromNumber) {
-    try {
-      const twilioClient = twilio(accountSid, authToken);
-      await twilioClient.messages.create({
-        from: fromNumber,
-        to: phoneNumber,
-        body: `Your family set up a BitRemit account for you. You'll receive money via ${RAIL_NAMES[paymentRail]}.`,
-      });
-    } catch {
-      // SMS failure is non-fatal — the recipient record is already created.
-      // Log the error in production monitoring rather than aborting.
-      console.error("[BitRemit] Twilio welcome SMS failed for", phoneNumber);
-    }
-  }
-
-  return NextResponse.json(recipient, { status: 201 });
 }

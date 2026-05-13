@@ -1333,6 +1333,8 @@ export namespace Prisma {
     id: string | null
     address: string | null
     phoneNumber: string | null
+    email: string | null
+    telegramChatId: string | null
     siweSession: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -1342,6 +1344,8 @@ export namespace Prisma {
     id: string | null
     address: string | null
     phoneNumber: string | null
+    email: string | null
+    telegramChatId: string | null
     siweSession: string | null
     createdAt: Date | null
     updatedAt: Date | null
@@ -1351,6 +1355,8 @@ export namespace Prisma {
     id: number
     address: number
     phoneNumber: number
+    email: number
+    telegramChatId: number
     siweSession: number
     createdAt: number
     updatedAt: number
@@ -1362,6 +1368,8 @@ export namespace Prisma {
     id?: true
     address?: true
     phoneNumber?: true
+    email?: true
+    telegramChatId?: true
     siweSession?: true
     createdAt?: true
     updatedAt?: true
@@ -1371,6 +1379,8 @@ export namespace Prisma {
     id?: true
     address?: true
     phoneNumber?: true
+    email?: true
+    telegramChatId?: true
     siweSession?: true
     createdAt?: true
     updatedAt?: true
@@ -1380,6 +1390,8 @@ export namespace Prisma {
     id?: true
     address?: true
     phoneNumber?: true
+    email?: true
+    telegramChatId?: true
     siweSession?: true
     createdAt?: true
     updatedAt?: true
@@ -1462,6 +1474,8 @@ export namespace Prisma {
     id: string
     address: string
     phoneNumber: string | null
+    email: string | null
+    telegramChatId: string | null
     siweSession: string | null
     createdAt: Date
     updatedAt: Date
@@ -1488,6 +1502,8 @@ export namespace Prisma {
     id?: boolean
     address?: boolean
     phoneNumber?: boolean
+    email?: boolean
+    telegramChatId?: boolean
     siweSession?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -1500,6 +1516,8 @@ export namespace Prisma {
     id?: boolean
     address?: boolean
     phoneNumber?: boolean
+    email?: boolean
+    telegramChatId?: boolean
     siweSession?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -1509,6 +1527,8 @@ export namespace Prisma {
     id?: boolean
     address?: boolean
     phoneNumber?: boolean
+    email?: boolean
+    telegramChatId?: boolean
     siweSession?: boolean
     createdAt?: boolean
     updatedAt?: boolean
@@ -1518,12 +1538,14 @@ export namespace Prisma {
     id?: boolean
     address?: boolean
     phoneNumber?: boolean
+    email?: boolean
+    telegramChatId?: boolean
     siweSession?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "address" | "phoneNumber" | "siweSession" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "address" | "phoneNumber" | "email" | "telegramChatId" | "siweSession" | "createdAt" | "updatedAt", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     vaultPosition?: boolean | User$vaultPositionArgs<ExtArgs>
     sentTxs?: boolean | User$sentTxsArgs<ExtArgs>
@@ -1542,6 +1564,8 @@ export namespace Prisma {
       id: string
       address: string
       phoneNumber: string | null
+      email: string | null
+      telegramChatId: string | null
       siweSession: string | null
       createdAt: Date
       updatedAt: Date
@@ -1973,6 +1997,8 @@ export namespace Prisma {
     readonly id: FieldRef<"User", 'String'>
     readonly address: FieldRef<"User", 'String'>
     readonly phoneNumber: FieldRef<"User", 'String'>
+    readonly email: FieldRef<"User", 'String'>
+    readonly telegramChatId: FieldRef<"User", 'String'>
     readonly siweSession: FieldRef<"User", 'String'>
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
@@ -3567,6 +3593,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal | null
     collateralRatio: Decimal | null
     lastSyncedBlock: number | null
+    lastAlertSentAt: Date | null
     updatedAt: Date | null
   }
 
@@ -3577,6 +3604,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal | null
     collateralRatio: Decimal | null
     lastSyncedBlock: number | null
+    lastAlertSentAt: Date | null
     updatedAt: Date | null
   }
 
@@ -3587,6 +3615,7 @@ export namespace Prisma {
     borrowedMUSD: number
     collateralRatio: number
     lastSyncedBlock: number
+    lastAlertSentAt: number
     updatedAt: number
     _all: number
   }
@@ -3613,6 +3642,7 @@ export namespace Prisma {
     borrowedMUSD?: true
     collateralRatio?: true
     lastSyncedBlock?: true
+    lastAlertSentAt?: true
     updatedAt?: true
   }
 
@@ -3623,6 +3653,7 @@ export namespace Prisma {
     borrowedMUSD?: true
     collateralRatio?: true
     lastSyncedBlock?: true
+    lastAlertSentAt?: true
     updatedAt?: true
   }
 
@@ -3633,6 +3664,7 @@ export namespace Prisma {
     borrowedMUSD?: true
     collateralRatio?: true
     lastSyncedBlock?: true
+    lastAlertSentAt?: true
     updatedAt?: true
     _all?: true
   }
@@ -3730,6 +3762,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal
     collateralRatio: Decimal
     lastSyncedBlock: number
+    lastAlertSentAt: Date | null
     updatedAt: Date
     _count: VaultPositionCountAggregateOutputType | null
     _avg: VaultPositionAvgAggregateOutputType | null
@@ -3759,6 +3792,7 @@ export namespace Prisma {
     borrowedMUSD?: boolean
     collateralRatio?: boolean
     lastSyncedBlock?: boolean
+    lastAlertSentAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["vaultPosition"]>
@@ -3770,6 +3804,7 @@ export namespace Prisma {
     borrowedMUSD?: boolean
     collateralRatio?: boolean
     lastSyncedBlock?: boolean
+    lastAlertSentAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["vaultPosition"]>
@@ -3781,6 +3816,7 @@ export namespace Prisma {
     borrowedMUSD?: boolean
     collateralRatio?: boolean
     lastSyncedBlock?: boolean
+    lastAlertSentAt?: boolean
     updatedAt?: boolean
     user?: boolean | UserDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["vaultPosition"]>
@@ -3792,10 +3828,11 @@ export namespace Prisma {
     borrowedMUSD?: boolean
     collateralRatio?: boolean
     lastSyncedBlock?: boolean
+    lastAlertSentAt?: boolean
     updatedAt?: boolean
   }
 
-  export type VaultPositionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "collateralAmount" | "borrowedMUSD" | "collateralRatio" | "lastSyncedBlock" | "updatedAt", ExtArgs["result"]["vaultPosition"]>
+  export type VaultPositionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "collateralAmount" | "borrowedMUSD" | "collateralRatio" | "lastSyncedBlock" | "lastAlertSentAt" | "updatedAt", ExtArgs["result"]["vaultPosition"]>
   export type VaultPositionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     user?: boolean | UserDefaultArgs<ExtArgs>
   }
@@ -3818,6 +3855,7 @@ export namespace Prisma {
       borrowedMUSD: Prisma.Decimal
       collateralRatio: Prisma.Decimal
       lastSyncedBlock: number
+      lastAlertSentAt: Date | null
       updatedAt: Date
     }, ExtArgs["result"]["vaultPosition"]>
     composites: {}
@@ -4249,6 +4287,7 @@ export namespace Prisma {
     readonly borrowedMUSD: FieldRef<"VaultPosition", 'Decimal'>
     readonly collateralRatio: FieldRef<"VaultPosition", 'Decimal'>
     readonly lastSyncedBlock: FieldRef<"VaultPosition", 'Int'>
+    readonly lastAlertSentAt: FieldRef<"VaultPosition", 'DateTime'>
     readonly updatedAt: FieldRef<"VaultPosition", 'DateTime'>
   }
     
@@ -6914,6 +6953,8 @@ export namespace Prisma {
     id: 'id',
     address: 'address',
     phoneNumber: 'phoneNumber',
+    email: 'email',
+    telegramChatId: 'telegramChatId',
     siweSession: 'siweSession',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
@@ -6943,6 +6984,7 @@ export namespace Prisma {
     borrowedMUSD: 'borrowedMUSD',
     collateralRatio: 'collateralRatio',
     lastSyncedBlock: 'lastSyncedBlock',
+    lastAlertSentAt: 'lastAlertSentAt',
     updatedAt: 'updatedAt'
   };
 
@@ -7122,6 +7164,8 @@ export namespace Prisma {
     id?: StringFilter<"User"> | string
     address?: StringFilter<"User"> | string
     phoneNumber?: StringNullableFilter<"User"> | string | null
+    email?: StringNullableFilter<"User"> | string | null
+    telegramChatId?: StringNullableFilter<"User"> | string | null
     siweSession?: StringNullableFilter<"User"> | string | null
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
@@ -7133,6 +7177,8 @@ export namespace Prisma {
     id?: SortOrder
     address?: SortOrder
     phoneNumber?: SortOrderInput | SortOrder
+    email?: SortOrderInput | SortOrder
+    telegramChatId?: SortOrderInput | SortOrder
     siweSession?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -7144,6 +7190,8 @@ export namespace Prisma {
     id?: string
     address?: string
     phoneNumber?: string
+    email?: string
+    telegramChatId?: string
     AND?: UserWhereInput | UserWhereInput[]
     OR?: UserWhereInput[]
     NOT?: UserWhereInput | UserWhereInput[]
@@ -7152,12 +7200,14 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"User"> | Date | string
     vaultPosition?: XOR<VaultPositionNullableScalarRelationFilter, VaultPositionWhereInput> | null
     sentTxs?: TransactionListRelationFilter
-  }, "id" | "address" | "phoneNumber">
+  }, "id" | "address" | "phoneNumber" | "email" | "telegramChatId">
 
   export type UserOrderByWithAggregationInput = {
     id?: SortOrder
     address?: SortOrder
     phoneNumber?: SortOrderInput | SortOrder
+    email?: SortOrderInput | SortOrder
+    telegramChatId?: SortOrderInput | SortOrder
     siweSession?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -7173,6 +7223,8 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"User"> | string
     address?: StringWithAggregatesFilter<"User"> | string
     phoneNumber?: StringNullableWithAggregatesFilter<"User"> | string | null
+    email?: StringNullableWithAggregatesFilter<"User"> | string | null
+    telegramChatId?: StringNullableWithAggregatesFilter<"User"> | string | null
     siweSession?: StringNullableWithAggregatesFilter<"User"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
@@ -7258,6 +7310,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFilter<"VaultPosition"> | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFilter<"VaultPosition"> | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFilter<"VaultPosition"> | number
+    lastAlertSentAt?: DateTimeNullableFilter<"VaultPosition"> | Date | string | null
     updatedAt?: DateTimeFilter<"VaultPosition"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
   }
@@ -7269,6 +7322,7 @@ export namespace Prisma {
     borrowedMUSD?: SortOrder
     collateralRatio?: SortOrder
     lastSyncedBlock?: SortOrder
+    lastAlertSentAt?: SortOrderInput | SortOrder
     updatedAt?: SortOrder
     user?: UserOrderByWithRelationInput
   }
@@ -7283,6 +7337,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFilter<"VaultPosition"> | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFilter<"VaultPosition"> | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFilter<"VaultPosition"> | number
+    lastAlertSentAt?: DateTimeNullableFilter<"VaultPosition"> | Date | string | null
     updatedAt?: DateTimeFilter<"VaultPosition"> | Date | string
     user?: XOR<UserScalarRelationFilter, UserWhereInput>
   }, "id" | "userId">
@@ -7294,6 +7349,7 @@ export namespace Prisma {
     borrowedMUSD?: SortOrder
     collateralRatio?: SortOrder
     lastSyncedBlock?: SortOrder
+    lastAlertSentAt?: SortOrderInput | SortOrder
     updatedAt?: SortOrder
     _count?: VaultPositionCountOrderByAggregateInput
     _avg?: VaultPositionAvgOrderByAggregateInput
@@ -7312,6 +7368,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalWithAggregatesFilter<"VaultPosition"> | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalWithAggregatesFilter<"VaultPosition"> | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntWithAggregatesFilter<"VaultPosition"> | number
+    lastAlertSentAt?: DateTimeNullableWithAggregatesFilter<"VaultPosition"> | Date | string | null
     updatedAt?: DateTimeWithAggregatesFilter<"VaultPosition"> | Date | string
   }
 
@@ -7468,6 +7525,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -7479,6 +7538,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -7490,6 +7551,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -7501,6 +7564,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -7512,6 +7577,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -7521,6 +7588,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -7530,6 +7599,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -7622,6 +7693,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal | DecimalJsLike | number | string
     collateralRatio: Decimal | DecimalJsLike | number | string
     lastSyncedBlock: number
+    lastAlertSentAt?: Date | string | null
     updatedAt?: Date | string
     user: UserCreateNestedOneWithoutVaultPositionInput
   }
@@ -7633,6 +7705,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal | DecimalJsLike | number | string
     collateralRatio: Decimal | DecimalJsLike | number | string
     lastSyncedBlock: number
+    lastAlertSentAt?: Date | string | null
     updatedAt?: Date | string
   }
 
@@ -7642,6 +7715,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFieldUpdateOperationsInput | number
+    lastAlertSentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     user?: UserUpdateOneRequiredWithoutVaultPositionNestedInput
   }
@@ -7653,6 +7727,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFieldUpdateOperationsInput | number
+    lastAlertSentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7663,6 +7738,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal | DecimalJsLike | number | string
     collateralRatio: Decimal | DecimalJsLike | number | string
     lastSyncedBlock: number
+    lastAlertSentAt?: Date | string | null
     updatedAt?: Date | string
   }
 
@@ -7672,6 +7748,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFieldUpdateOperationsInput | number
+    lastAlertSentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7682,6 +7759,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFieldUpdateOperationsInput | number
+    lastAlertSentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -7909,6 +7987,8 @@ export namespace Prisma {
     id?: SortOrder
     address?: SortOrder
     phoneNumber?: SortOrder
+    email?: SortOrder
+    telegramChatId?: SortOrder
     siweSession?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -7918,6 +7998,8 @@ export namespace Prisma {
     id?: SortOrder
     address?: SortOrder
     phoneNumber?: SortOrder
+    email?: SortOrder
+    telegramChatId?: SortOrder
     siweSession?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -7927,6 +8009,8 @@ export namespace Prisma {
     id?: SortOrder
     address?: SortOrder
     phoneNumber?: SortOrder
+    email?: SortOrder
+    telegramChatId?: SortOrder
     siweSession?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
@@ -8067,6 +8151,17 @@ export namespace Prisma {
     not?: NestedIntFilter<$PrismaModel> | number
   }
 
+  export type DateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type UserScalarRelationFilter = {
     is?: UserWhereInput
     isNot?: UserWhereInput
@@ -8079,6 +8174,7 @@ export namespace Prisma {
     borrowedMUSD?: SortOrder
     collateralRatio?: SortOrder
     lastSyncedBlock?: SortOrder
+    lastAlertSentAt?: SortOrder
     updatedAt?: SortOrder
   }
 
@@ -8096,6 +8192,7 @@ export namespace Prisma {
     borrowedMUSD?: SortOrder
     collateralRatio?: SortOrder
     lastSyncedBlock?: SortOrder
+    lastAlertSentAt?: SortOrder
     updatedAt?: SortOrder
   }
 
@@ -8106,6 +8203,7 @@ export namespace Prisma {
     borrowedMUSD?: SortOrder
     collateralRatio?: SortOrder
     lastSyncedBlock?: SortOrder
+    lastAlertSentAt?: SortOrder
     updatedAt?: SortOrder
   }
 
@@ -8148,6 +8246,20 @@ export namespace Prisma {
     _max?: NestedIntFilter<$PrismaModel>
   }
 
+  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
   export type EnumTxStatusFilter<$PrismaModel = never> = {
     equals?: $Enums.TxStatus | EnumTxStatusFieldRefInput<$PrismaModel>
     in?: $Enums.TxStatus[] | ListEnumTxStatusFieldRefInput<$PrismaModel>
@@ -8164,17 +8276,6 @@ export namespace Prisma {
     gt?: number | IntFieldRefInput<$PrismaModel>
     gte?: number | IntFieldRefInput<$PrismaModel>
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
-  }
-
-  export type DateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
 
   export type RecipientScalarRelationFilter = {
@@ -8271,20 +8372,6 @@ export namespace Prisma {
     _sum?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedIntNullableFilter<$PrismaModel>
     _max?: NestedIntNullableFilter<$PrismaModel>
-  }
-
-  export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
 
   export type IndexerStateCountOrderByAggregateInput = {
@@ -8471,6 +8558,10 @@ export namespace Prisma {
     divide?: number
   }
 
+  export type NullableDateTimeFieldUpdateOperationsInput = {
+    set?: Date | string | null
+  }
+
   export type UserUpdateOneRequiredWithoutVaultPositionNestedInput = {
     create?: XOR<UserCreateWithoutVaultPositionInput, UserUncheckedCreateWithoutVaultPositionInput>
     connectOrCreate?: UserCreateOrConnectWithoutVaultPositionInput
@@ -8501,10 +8592,6 @@ export namespace Prisma {
     decrement?: number
     multiply?: number
     divide?: number
-  }
-
-  export type NullableDateTimeFieldUpdateOperationsInput = {
-    set?: Date | string | null
   }
 
   export type UserUpdateOneRequiredWithoutSentTxsNestedInput = {
@@ -8673,6 +8760,17 @@ export namespace Prisma {
     not?: NestedDecimalFilter<$PrismaModel> | Decimal | DecimalJsLike | number | string
   }
 
+  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type NestedDecimalWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Decimal | DecimalJsLike | number | string | DecimalFieldRefInput<$PrismaModel>
     in?: Decimal[] | DecimalJsLike[] | number[] | string[] | ListDecimalFieldRefInput<$PrismaModel>
@@ -8716,14 +8814,7 @@ export namespace Prisma {
     not?: NestedFloatFilter<$PrismaModel> | number
   }
 
-  export type NestedEnumTxStatusFilter<$PrismaModel = never> = {
-    equals?: $Enums.TxStatus | EnumTxStatusFieldRefInput<$PrismaModel>
-    in?: $Enums.TxStatus[] | ListEnumTxStatusFieldRefInput<$PrismaModel>
-    notIn?: $Enums.TxStatus[] | ListEnumTxStatusFieldRefInput<$PrismaModel>
-    not?: NestedEnumTxStatusFilter<$PrismaModel> | $Enums.TxStatus
-  }
-
-  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
     notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -8731,7 +8822,17 @@ export namespace Prisma {
     lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedDateTimeNullableFilter<$PrismaModel>
+    _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type NestedEnumTxStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.TxStatus | EnumTxStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.TxStatus[] | ListEnumTxStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.TxStatus[] | ListEnumTxStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumTxStatusFilter<$PrismaModel> | $Enums.TxStatus
   }
 
   export type NestedEnumTxStatusWithAggregatesFilter<$PrismaModel = never> = {
@@ -8771,26 +8872,13 @@ export namespace Prisma {
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
 
-  export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableWithAggregatesFilter<$PrismaModel> | Date | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedDateTimeNullableFilter<$PrismaModel>
-    _max?: NestedDateTimeNullableFilter<$PrismaModel>
-  }
-
   export type VaultPositionCreateWithoutUserInput = {
     id?: string
     collateralAmount: Decimal | DecimalJsLike | number | string
     borrowedMUSD: Decimal | DecimalJsLike | number | string
     collateralRatio: Decimal | DecimalJsLike | number | string
     lastSyncedBlock: number
+    lastAlertSentAt?: Date | string | null
     updatedAt?: Date | string
   }
 
@@ -8800,6 +8888,7 @@ export namespace Prisma {
     borrowedMUSD: Decimal | DecimalJsLike | number | string
     collateralRatio: Decimal | DecimalJsLike | number | string
     lastSyncedBlock: number
+    lastAlertSentAt?: Date | string | null
     updatedAt?: Date | string
   }
 
@@ -8867,6 +8956,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFieldUpdateOperationsInput | number
+    lastAlertSentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -8876,6 +8966,7 @@ export namespace Prisma {
     borrowedMUSD?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     collateralRatio?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
     lastSyncedBlock?: IntFieldUpdateOperationsInput | number
+    lastAlertSentAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
@@ -8977,6 +9068,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -8987,6 +9080,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -9013,6 +9108,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -9023,6 +9120,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -9033,6 +9132,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -9043,6 +9144,8 @@ export namespace Prisma {
     id?: string
     address: string
     phoneNumber?: string | null
+    email?: string | null
+    telegramChatId?: string | null
     siweSession?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
@@ -9096,6 +9199,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -9106,6 +9211,8 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     address?: StringFieldUpdateOperationsInput | string
     phoneNumber?: NullableStringFieldUpdateOperationsInput | string | null
+    email?: NullableStringFieldUpdateOperationsInput | string | null
+    telegramChatId?: NullableStringFieldUpdateOperationsInput | string | null
     siweSession?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
