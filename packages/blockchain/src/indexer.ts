@@ -117,10 +117,11 @@ async function sendVaultAlert(user: any, ratio: number) {
   const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
   const ADMIN_CHAT_ID = process.env.ADMIN_TELEGRAM_CHAT_ID;
 
-  const message = `🚨 *BitRemit Vault Danger!* \n\n` +
-                 `Your vault collateral ratio has dropped to *${ratio.toFixed(2)}%*.\n` +
-                 `Please add collateral immediately to avoid liquidation.\n\n` +
-                 `🌍 [Manage Vault](https://bitremit.vercel.app/dashboard)`;
+  const message =
+    `🚨 *BitRemit Vault Danger!* \n\n` +
+    `Your vault collateral ratio has dropped to *${ratio.toFixed(2)}%*.\n` +
+    `Please add collateral immediately to avoid liquidation.\n\n` +
+    `🌍 [Manage Vault](https://bitremit.vercel.app/dashboard)`;
 
   // 1. Send Telegram Alert to User (if linked)
   if (TELEGRAM_TOKEN && user.telegramChatId) {
@@ -134,7 +135,9 @@ async function sendVaultAlert(user: any, ratio: number) {
           parse_mode: "Markdown",
         }),
       });
-      console.log(`[Vault Monitor] Telegram alert sent to user ${user.address}`);
+      console.log(
+        `[Vault Monitor] Telegram alert sent to user ${user.address}`,
+      );
     } catch (err) {
       console.error(`[Vault Monitor] Failed to send Telegram alert:`, err);
     }
@@ -159,7 +162,9 @@ async function sendVaultAlert(user: any, ratio: number) {
 
   // 3. Send Email (Placeholder / Mock)
   if (user.email) {
-    console.log(`[Vault Monitor] Sending Push Notification / Email to ${user.email}...`);
+    console.log(
+      `[Vault Monitor] Sending Push Notification / Email to ${user.email}...`,
+    );
     // Example: await resend.emails.send({ ... });
   }
 }
@@ -265,7 +270,10 @@ async function syncEvents() {
         })) as bigint;
 
         const ratioPercent = Number(collateralRatio) / 10;
-        const isNoDebt = collateralRatio === 115792089237316195423570985008687907853269984665640564039457584007913129639935n || borrowedMUSD === 0n;
+        const isNoDebt =
+          collateralRatio ===
+            115792089237316195423570985008687907853269984665640564039457584007913129639935n ||
+          borrowedMUSD === 0n;
 
         // Vault Health Monitoring
         const existingPosition = await prisma.vaultPosition.findUnique({
@@ -276,10 +284,14 @@ async function syncEvents() {
         let alertSentThisCycle = false;
 
         if (!isNoDebt && ratioPercent < 130) {
-          const shouldAlert = !existingPosition?.lastAlertSentAt || existingPosition.lastAlertSentAt < oneDayAgo;
+          const shouldAlert =
+            !existingPosition?.lastAlertSentAt ||
+            existingPosition.lastAlertSentAt < oneDayAgo;
 
           if (shouldAlert) {
-            console.warn(`🚨 [Vault Monitor] Danger! Vault for ${userAddress} has collateral ratio of ${ratioPercent}%.`);
+            console.warn(
+              `🚨 [Vault Monitor] Danger! Vault for ${userAddress} has collateral ratio of ${ratioPercent}%.`,
+            );
             await sendVaultAlert(user, ratioPercent);
             alertSentThisCycle = true;
           }
@@ -290,7 +302,7 @@ async function syncEvents() {
           update: {
             collateralAmount: Number(collateralAmount) / 1e18,
             borrowedMUSD: Number(borrowedMUSD) / 1e18,
-            collateralRatio: Number(collateralRatio) / 1000,
+            collateralRatio: isNoDebt ? 0 : Number(collateralRatio) / 1000,
             lastSyncedBlock: Number(blockNumber),
             ...(alertSentThisCycle ? { lastAlertSentAt: new Date() } : {}),
           },
@@ -298,7 +310,7 @@ async function syncEvents() {
             userId: user.id,
             collateralAmount: Number(collateralAmount) / 1e18,
             borrowedMUSD: Number(borrowedMUSD) / 1e18,
-            collateralRatio: Number(collateralRatio) / 1000,
+            collateralRatio: isNoDebt ? 0 : Number(collateralRatio) / 1000,
             lastSyncedBlock: Number(blockNumber),
             ...(alertSentThisCycle ? { lastAlertSentAt: new Date() } : {}),
           },

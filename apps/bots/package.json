@@ -2,6 +2,7 @@
   "name": "@bitremit/bots",
   "version": "0.0.1",
   "private": true,
+  "packageManager": "pnpm@9.15.4",
   "type": "module",
   "scripts": {
     "dev:whatsapp": "tsx --env-file=../../.env.local whatsapp/index.ts",
