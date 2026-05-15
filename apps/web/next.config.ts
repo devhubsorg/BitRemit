@@ -36,10 +36,14 @@ const wagmiEntry = require.resolve("wagmi/package.json");
 const wagmiRoot = path.dirname(wagmiEntry);
 
 const nextConfig: NextConfig = {
-  // Tell Next.js output tracing to include the Prisma engine binary from the
-  // monorepo's custom generated client path so Vercel bundles it correctly.
+  // Set the tracing root to the monorepo root so Next.js can resolve files
+  // outside apps/web/ (e.g. packages/database/generated/client/).
+  outputFileTracingRoot: path.join(process.cwd(), "../../"),
+
+  // Explicitly include the Prisma engine binary in the Vercel bundle.
+  // Paths are relative to outputFileTracingRoot (monorepo root).
   outputFileTracingIncludes: {
-    "**/*": ["../../packages/database/generated/client/**"],
+    "**/*": ["packages/database/generated/client/**"],
   },
 
   transpilePackages: [
