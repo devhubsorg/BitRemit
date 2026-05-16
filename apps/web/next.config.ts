@@ -42,8 +42,9 @@ const nextConfig: NextConfig = {
 
   // Explicitly include the Prisma engine binary in the Vercel bundle.
   // Paths are relative to outputFileTracingRoot (monorepo root).
+  // The key must be a slash-prefixed route glob so Next.js recognises it.
   outputFileTracingIncludes: {
-    "**/*": ["packages/database/generated/client/**"],
+    "/**": ["packages/database/generated/client/**"],
   },
 
   transpilePackages: [
