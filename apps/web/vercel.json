@@ -2,6 +2,6 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "corepack enable && pnpm install",
-  "buildCommand": "cd ../.. && pnpm --filter=@bitremit/database exec prisma generate && pnpm --filter=web build",
+  "buildCommand": "cd ../.. && pnpm --filter=@bitremit/database exec prisma generate && mkdir -p apps/web/generated/client && cp packages/database/generated/client/*.node apps/web/generated/client/ && pnpm --filter=web build",
   "outputDirectory": ".next"
 }
