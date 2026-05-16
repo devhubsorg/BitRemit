@@ -227,7 +227,9 @@ async function syncEvents() {
                     args: [userAddress],
                 }));
                 const ratioPercent = Number(collateralRatio) / 10;
-                const isNoDebt = collateralRatio === 115792089237316195423570985008687907853269984665640564039457584007913129639935n || borrowedMUSD === 0n;
+                const isNoDebt = collateralRatio ===
+                    115792089237316195423570985008687907853269984665640564039457584007913129639935n ||
+                    borrowedMUSD === 0n;
                 // Vault Health Monitoring
                 const existingPosition = await prisma.vaultPosition.findUnique({
                     where: { userId: user.id },
@@ -235,7 +237,8 @@ async function syncEvents() {
                 const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
                 let alertSentThisCycle = false;
                 if (!isNoDebt && ratioPercent < 130) {
-                    const shouldAlert = !existingPosition?.lastAlertSentAt || existingPosition.lastAlertSentAt < oneDayAgo;
+                    const shouldAlert = !existingPosition?.lastAlertSentAt ||
+                        existingPosition.lastAlertSentAt < oneDayAgo;
                     if (shouldAlert) {
                         console.warn(`🚨 [Vault Monitor] Danger! Vault for ${userAddress} has collateral ratio of ${ratioPercent}%.`);
                         await sendVaultAlert(user, ratioPercent);
@@ -247,7 +250,7 @@ async function syncEvents() {
                     update: {
                         collateralAmount: Number(collateralAmount) / 1e18,
                         borrowedMUSD: Number(borrowedMUSD) / 1e18,
-                        collateralRatio: Number(collateralRatio) / 1000,
+                        collateralRatio: isNoDebt ? 0 : Number(collateralRatio) / 1000,
                         lastSyncedBlock: Number(blockNumber),
                         ...(alertSentThisCycle ? { lastAlertSentAt: new Date() } : {}),
                     },
@@ -255,7 +258,7 @@ async function syncEvents() {
                         userId: user.id,
                         collateralAmount: Number(collateralAmount) / 1e18,
                         borrowedMUSD: Number(borrowedMUSD) / 1e18,
-                        collateralRatio: Number(collateralRatio) / 1000,
+                        collateralRatio: isNoDebt ? 0 : Number(collateralRatio) / 1000,
                         lastSyncedBlock: Number(blockNumber),
                         ...(alertSentThisCycle ? { lastAlertSentAt: new Date() } : {}),
                     },
