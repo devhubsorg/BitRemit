@@ -50,6 +50,18 @@ contract RemittanceRouter is
 
     function _authorizeUpgrade(address newImplementation) internal override onlyOwner {}
 
+    function setVault(address _vault) external onlyOwner {
+        vault = IBitRemitVault(_vault);
+    }
+
+    function setRegistry(address _registry) external onlyOwner {
+        registry = IRecipientRegistry(_registry);
+    }
+
+    function setMusdToken(address _musdToken) external onlyOwner {
+        musdToken = IERC20(_musdToken);
+    }
+
     function pause() external onlyOwner { _pause(); }
     function unpause() external onlyOwner { _unpause(); }
 

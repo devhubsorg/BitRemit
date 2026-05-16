@@ -1,4 +1,4 @@
-import { PrismaClient } from "../prisma/client";
+import { PrismaClient } from "@prisma/client";
 function createPrismaClient() {
     return new PrismaClient({
         log: process.env.NODE_ENV === "development"
